@@ -1,0 +1,13 @@
+[package]
+name = "ssh-agent"
+description = "Library for implementing an SSH agent"
+version = "0.0.0"
+license = "MIT"
+authors = ["Nicolas Trippar <ntrippar@gmail.com>"]
+readme = "README.md"
+edition = "2018"
+
+[badges]
+travis-ci = { repository = "sekey/ssh-agent.rs" }
+
+[dependencies]
