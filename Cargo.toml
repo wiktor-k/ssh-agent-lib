@@ -11,3 +11,9 @@ edition = "2018"
 travis-ci = { repository = "sekey/ssh-agent.rs" }
 
 [dependencies]
+byteorder = "1.2.7"
+num-derive = "0.2"
+num-traits = "0.2"
+serde = "*"
+serde_derive = "*"
+bytes = "*"
