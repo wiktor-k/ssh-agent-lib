@@ -10,6 +10,12 @@ pub enum Error {
     Deserialization(String)
 }
 
+impl From<Error> for () {
+    fn from(e: Error) -> () {
+        ()
+    }
+}
+
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Error {
         Error::IO(e)
