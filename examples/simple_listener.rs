@@ -1,41 +1,64 @@
-//#![deny(warnings)]
-
-extern crate tokio;
-
 use tokio::io;
-use tokio::net::TcpListener;
+//use tokio::net::TcpListener;
+use tokio_uds::UnixListener;
 use tokio::prelude::*;
 
-use std::net::SocketAddr;
 use std::mem::size_of;
 
-use futures::future;
+use futures::future::{self, Loop, Either};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use tokio_uds::*;
+use ssh_agent::proto::{from_bytes, to_bytes};
+use ssh_agent::proto::message::{Message, Identity};
+use ssh_agent::proto::error::ProtoResult;
 
-use ssh_agent::proto::deserialize::from_bytes;
-use ssh_agent::proto::{Message, Blob, Identity};
+use serde::{Serialize, Deserialize};
 
-fn process(request: &Message) -> Option<Message> {
+struct Response<T> {
+    content: T,
+    close: bool
+}
+
+impl<'de, T: Serialize + Deserialize<'de>> Response<T> {
+    fn new(content: T, close: bool) -> Self {
+        Self {
+            content: content,
+            close: close
+        }
+    }
+    
+    fn close(content: T) -> Self {
+        Self::new(content, true)
+    }
+    
+    fn ok(content: T) -> Self {
+        Self::new(content, false)
+    }
+    
+    fn encode(&self) -> ProtoResult<Response<Vec<u8>>> {
+        to_bytes(&self.content).and_then(|v| to_bytes(&v))
+                               .map(|v| Response::new(v, self.close))
+    }
+}
+
+fn process(request: &Message) -> Response<Message> {
     match request {
         Message::RequestIdentities => {
             let identity = Identity {
                 key_blob: b"key_blob".to_vec(),
                 comment: "some comment".to_string()
             };
-            Some(Message::IdentitiesAnswer(vec![identity]))
+            Response::ok(Message::IdentitiesAnswer(vec![identity]))
         },
-        _ => Some(Message::Failure)
+        _ => Response::close(Message::Failure)
     }
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let addr = "127.0.0.1:8080".parse::<SocketAddr>()?;
-    
-    let socket = UnixListener::bind("connect.sock")?;
-    println!("Listening on: {}", addr);
+    let path = "connect.sock";
+    let socket = UnixListener::bind(path)?;
+    println!("Listening on: {}", path);
     
     let done = socket.incoming()
         .map_err(|e| println!("failed to accept socket; error = {:?}", e))
@@ -51,22 +74,30 @@ fn main() -> Result<(), Box<std::error::Error>> {
                     .map_err(|e| println!("error reading; error = {:?}", e))
                     .and_then(|(socket, request_buffer)| {
                         if request_buffer.len() > 0 {
-                            let request: Message = from_bytes(&request_buffer).unwrap();
-                            let response = process(&request);
-                            println!("Request: {:?}", request);
-                            println!("Response: {:?}", response);
-                            if let Some(response) = response {
-                                let response_blob = response.to_blob().unwrap();
-                                let response_buffer = response_blob.to_blob().unwrap();
-                                let send = io::write_all(socket, response_buffer)
-                                    .map_err(|e| println!("error sending; error = {:?}", e))
-                                    .map(|(socket, _)| socket);
-                                return future::Either::B(send);
+                            let request = from_bytes(&request_buffer);
+                            let response = request.map(|r| process(&r))
+                                                  .and_then(|r| r.encode());
+                            if let Result::Err(_) = response {
+                                return Either::A(Err(()).into());
                             }
+                            let response = response.unwrap();
+                            let close = response.close;
+                            let content = response.content;
+                            return Either::B(
+                                io::write_all(socket, content)
+                                    .map_err(|e| println!("error sending; error = {:?}", e))
+                                    .map(move |(socket, _)| {
+                                        if close {
+                                            Loop::Break(())
+                                        } else {
+                                            Loop::Continue(socket)
+                                        }
+                                    })
+                            )
                         }
-                        return future::Either::A(future::ok(socket));
+                        return Either::A(future::ok(Loop::Continue(socket)));
                     })
-                    .map(future::Loop::Continue)
+                    .map_err(|e| println!("error reading; error = {:?}", e))
             });
             tokio::spawn(receive)
         });
