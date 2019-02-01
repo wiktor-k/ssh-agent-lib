@@ -25,6 +25,7 @@ addons:
       - gcc
       - binutils-dev
       - libiberty-dev
+
 script:
   - cargo build --verbose
   - cargo test --verbose
