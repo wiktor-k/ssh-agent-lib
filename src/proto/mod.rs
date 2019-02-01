@@ -1,6 +1,7 @@
 pub mod serialize;
 pub mod deserialize;
 pub mod message;
+pub mod key;
 pub mod error;
 
 pub use self::serialize::to_bytes;
