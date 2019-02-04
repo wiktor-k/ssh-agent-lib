@@ -3,7 +3,6 @@ use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum ProtoError { 
-    NotImplemented,
     StringEncoding,
     IO(io::Error),
     Serialization(String),
@@ -11,7 +10,7 @@ pub enum ProtoError {
 }
 
 impl From<ProtoError> for () {
-    fn from(e: ProtoError) -> () {
+    fn from(_e: ProtoError) -> () {
         ()
     }
 }
@@ -43,7 +42,6 @@ impl serde::de::Error for ProtoError {
 impl std::error::Error for ProtoError {
     fn description(&self) -> &str {
         match self {
-            ProtoError::NotImplemented => "Method not implemented",
             ProtoError::StringEncoding => "String encoding failed",
             ProtoError::IO(_) => "I/O Error",
             ProtoError::Serialization(_) => "Serialization Error",
@@ -53,7 +51,6 @@ impl std::error::Error for ProtoError {
 
     fn cause(&self) -> Option<&std::error::Error> {
         match self {
-            ProtoError::NotImplemented => None,
             ProtoError::StringEncoding => None,
             ProtoError::IO(error) => Some(error),
             ProtoError::Serialization(_) => None,

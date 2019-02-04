@@ -152,8 +152,12 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     }
 
     fn serialize_seq(self, len: Option<usize>) -> ProtoResult<Self::SerializeSeq> {
-        (len.ok_or(ProtoError::NotImplemented)? as u32).serialize(&mut *self)?;
-        Ok(self)
+        if let Some(len) = len {
+            len.serialize(&mut *self)?;
+            Ok(self)
+        } else {
+            unimplemented!()
+        }
     }
 
     fn serialize_tuple(self, _len: usize) -> ProtoResult<Self::SerializeTuple> {
