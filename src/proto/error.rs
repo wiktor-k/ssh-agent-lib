@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum ProtoError { 
-    StringEncoding,
+    StringEncoding(string::FromUtf8Error),
     IO(io::Error),
     Serialization(String),
     Deserialization(String)
@@ -22,8 +22,8 @@ impl From<io::Error> for ProtoError {
 }
 
 impl From<string::FromUtf8Error> for ProtoError {
-    fn from(_e: string::FromUtf8Error) -> ProtoError {
-        ProtoError::StringEncoding
+    fn from(e: string::FromUtf8Error) -> ProtoError {
+        ProtoError::StringEncoding(e)
     }
 }
 
@@ -42,7 +42,7 @@ impl serde::de::Error for ProtoError {
 impl std::error::Error for ProtoError {
     fn description(&self) -> &str {
         match self {
-            ProtoError::StringEncoding => "String encoding failed",
+            ProtoError::StringEncoding(_) => "String encoding failed",
             ProtoError::IO(_) => "I/O Error",
             ProtoError::Serialization(_) => "Serialization Error",
             ProtoError::Deserialization(_) => "Deserialization Error"
@@ -51,8 +51,8 @@ impl std::error::Error for ProtoError {
 
     fn cause(&self) -> Option<&std::error::Error> {
         match self {
-            ProtoError::StringEncoding => None,
-            ProtoError::IO(error) => Some(error),
+            ProtoError::StringEncoding(e) => Some(e),
+            ProtoError::IO(e) => Some(e),
             ProtoError::Serialization(_) => None,
             ProtoError::Deserialization(_) => None
         }
