@@ -34,53 +34,43 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     }
 
     fn serialize_i8(self, v: i8) -> ProtoResult<()> {
-        self.writer.write_i8(v)?;
-        Ok(())
+        self.writer.write_i8(v).map_err(Into::into)
     }
 
     fn serialize_i16(self, v: i16) -> ProtoResult<()> {
-        self.writer.write_i16::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_i16::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_i32(self, v: i32) -> ProtoResult<()> {
-        self.writer.write_i32::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_i32::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_i64(self, v: i64) -> ProtoResult<()> {
-        self.writer.write_i64::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_i64::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_u8(self, v: u8) -> ProtoResult<()> {
-        self.writer.write_u8(v)?;
-        Ok(())
+        self.writer.write_u8(v).map_err(Into::into)
     }
 
     fn serialize_u16(self, v: u16) -> ProtoResult<()> {
-        self.writer.write_u16::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_u16::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_u32(self, v: u32) -> ProtoResult<()> {
-        self.writer.write_u32::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_u32::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_u64(self, v: u64) -> ProtoResult<()> {
-        self.writer.write_u64::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_u64::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_f32(self, v: f32) -> ProtoResult<()> {
-        self.writer.write_f32::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_f32::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_f64(self, v: f64) -> ProtoResult<()> {
-        self.writer.write_f64::<BigEndian>(v)?;
-        Ok(())
+        self.writer.write_f64::<BigEndian>(v).map_err(Into::into)
     }
 
     fn serialize_char(self, _v: char) -> ProtoResult<()> {
@@ -93,8 +83,7 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
 
     fn serialize_bytes(self, v: &[u8]) -> ProtoResult<()> {
         (v.len() as u32).serialize(&mut *self)?;
-        self.writer.write_all(v)?;
-        Ok(())
+        self.writer.write_all(v).map_err(Into::into)
     }
 
     fn serialize_none(self) -> ProtoResult<()> {
@@ -128,12 +117,12 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
-        _value: &T,
+        value: &T,
     ) -> ProtoResult<()>
     where
         T: ?Sized + Serialize,
     {
-        unimplemented!()
+        value.serialize(&mut *self)
     }
 
     fn serialize_newtype_variant<T>(
@@ -147,14 +136,12 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
         T: ?Sized + Serialize,
     {
         (variant_index as u8).serialize(&mut *self)?;
-        value.serialize(&mut *self)?;
-        Ok(())
+        value.serialize(&mut *self)
     }
 
     fn serialize_seq(self, len: Option<usize>) -> ProtoResult<Self::SerializeSeq> {
         if let Some(len) = len {
-            len.serialize(&mut *self)?;
-            Ok(self)
+            (len as u32).serialize(&mut *self).map(|()| self)
         } else {
             unimplemented!()
         }

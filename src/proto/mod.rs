@@ -1,11 +1,11 @@
-pub mod serialize;
-pub mod deserialize;
+pub mod ser;
+pub mod de;
 pub mod message;
-pub mod key;
 pub mod error;
+pub mod key;
 
-pub use self::serialize::to_bytes;
-pub use self::deserialize::from_bytes;
+pub use self::ser::to_bytes;
+pub use self::de::from_bytes;
 
 use serde::{Serialize, Deserialize};
 use self::error::ProtoResult;

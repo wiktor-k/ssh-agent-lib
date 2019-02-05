@@ -3,6 +3,7 @@ use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum ProtoError { 
+    MessageTooLong,
     StringEncoding(string::FromUtf8Error),
     IO(io::Error),
     Serialization(String),
@@ -42,6 +43,7 @@ impl serde::de::Error for ProtoError {
 impl std::error::Error for ProtoError {
     fn description(&self) -> &str {
         match self {
+            ProtoError::MessageTooLong => "Message too long",
             ProtoError::StringEncoding(_) => "String encoding failed",
             ProtoError::IO(_) => "I/O Error",
             ProtoError::Serialization(_) => "Serialization Error",
@@ -51,6 +53,7 @@ impl std::error::Error for ProtoError {
 
     fn cause(&self) -> Option<&std::error::Error> {
         match self {
+            ProtoError::MessageTooLong => None,
             ProtoError::StringEncoding(e) => Some(e),
             ProtoError::IO(e) => Some(e),
             ProtoError::Serialization(_) => None,
