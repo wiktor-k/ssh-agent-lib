@@ -2,7 +2,8 @@ pub mod ser;
 pub mod de;
 pub mod message;
 pub mod error;
-pub mod key;
+pub mod private_key;
+pub mod public_key;
 
 pub use self::ser::to_bytes;
 pub use self::de::from_bytes;
@@ -28,27 +29,25 @@ impl<'a, T: Serialize + Deserialize<'a>> Blob for T {
 #[cfg(test)]
 mod tests {
     use super::{to_bytes, from_bytes, Blob};
-    use super::key::PublicKey;
+    use super::public_key::{PublicKey, RsaKey};
     use super::message::{Message, SignRequest, SignResponse, Identity};
 
     #[test]
     fn blob_serialization() {
-        let key = PublicKey {
-            key_type: "key_type".to_string(),
-            identifier: "identifier".to_string(),
-            key: b"key".to_vec()
-        };
+        let key = PublicKey::Rsa(RsaKey {
+            e: vec![1, 0, 1],
+            n: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        });
         let serde_key = PublicKey::from_blob(&key.to_blob().unwrap()).unwrap();
         assert_eq!(key, serde_key);
     }
     
     #[test]
     fn message_serialization() {
-        let key = PublicKey {
-            key_type: "key_type".to_string(),
-            identifier: "identifier".to_string(),
-            key: b"key".to_vec()
-        };
+        let key = PublicKey::Rsa(RsaKey {
+            e: vec![1, 0, 1],
+            n: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        });
         
         let sign_req = Message::SignRequest(
             SignRequest {

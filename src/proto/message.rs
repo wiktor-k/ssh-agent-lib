@@ -1,3 +1,5 @@
+use super::private_key::PrivateKey;
+
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct Identity {
     pub key_blob: Vec<u8>,
@@ -18,8 +20,7 @@ pub struct SignResponse {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentity {
-    pub key_type: String,
-    pub key_contents: Vec<u8>,
+    pub key_contents: PrivateKey,
     pub key_comment: String
 }
 
