@@ -29,12 +29,12 @@ impl<'a, T: Serialize + Deserialize<'a>> Blob for T {
 #[cfg(test)]
 mod tests {
     use super::{to_bytes, from_bytes, Blob};
-    use super::public_key::{PublicKey, RsaKey};
+    use super::public_key::{PublicKey, RsaPublicKey};
     use super::message::{Message, SignRequest, SignResponse, Identity};
 
     #[test]
     fn blob_serialization() {
-        let key = PublicKey::Rsa(RsaKey {
+        let key = PublicKey::Rsa(RsaPublicKey {
             e: vec![1, 0, 1],
             n: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         });
@@ -44,7 +44,7 @@ mod tests {
     
     #[test]
     fn message_serialization() {
-        let key = PublicKey::Rsa(RsaKey {
+        let key = PublicKey::Rsa(RsaPublicKey {
             e: vec![1, 0, 1],
             n: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         });

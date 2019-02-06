@@ -5,7 +5,7 @@ use super::error::ProtoError;
 pub type MpInt = Vec<u8>;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct DssKey {
+pub struct DssPrivateKey {
     pub p: MpInt,
     pub q: MpInt,
     pub g: MpInt,
@@ -14,13 +14,13 @@ pub struct DssKey {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct Ed25519Key {
+pub struct Ed25519PrivateKey {
     pub enc_a: String,
     pub k_enc_a: String
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct RsaKey {
+pub struct RsaPrivateKey {
     pub n: MpInt,
     pub e: MpInt,
     pub d: MpInt,
@@ -30,7 +30,7 @@ pub struct RsaKey {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct EcDsaKey {
+pub struct EcDsaPrivateKey {
     pub identifier: String,
     pub q: MpInt,
     pub d: MpInt
@@ -38,10 +38,10 @@ pub struct EcDsaKey {
 
 #[derive(PartialEq, Debug)]
 pub enum PrivateKey {
-    Dss(DssKey),
-    Ed25519(Ed25519Key),
-    Rsa(RsaKey),
-    EcDsa(EcDsaKey)
+    Dss(DssPrivateKey),
+    Ed25519(Ed25519PrivateKey),
+    Rsa(RsaPrivateKey),
+    EcDsa(EcDsaPrivateKey)
 }
 
 impl Serialize for PrivateKey {
@@ -92,23 +92,23 @@ impl<'de> Deserialize<'de> for PrivateKey {
                     .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
                 match key_type.as_str() {
                     "ssh-dss" => {
-                        let key: DssKey = seq.next_element()?
+                        let key: DssPrivateKey = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                         Ok(PrivateKey::Dss(key))
                     },
                     "ssh-ed25519" => {
-                        let key: Ed25519Key = seq.next_element()?
+                        let key: Ed25519PrivateKey = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                         Ok(PrivateKey::Ed25519(key))
                     },
                     "ssh-rsa" => {
-                        let key: RsaKey = seq.next_element()?
+                        let key: RsaPrivateKey = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                         Ok(PrivateKey::Rsa(key))
                     },
                     other => {
                         if other.starts_with("ecdsa-sha2-") {
-                            let key: EcDsaKey = seq.next_element()?
+                            let key: EcDsaPrivateKey = seq.next_element()?
                                 .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                             Ok(PrivateKey::EcDsa(key))
                         } else {

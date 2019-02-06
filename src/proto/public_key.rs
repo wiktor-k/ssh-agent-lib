@@ -6,13 +6,13 @@ use super::private_key;
 pub type MpInt = Vec<u8>;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct RsaKey {
+pub struct RsaPublicKey {
     pub e: MpInt,
     pub n: MpInt
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct DssKey {
+pub struct DssPublicKey {
     pub p: MpInt,
     pub q: MpInt,
     pub g: MpInt,
@@ -20,26 +20,26 @@ pub struct DssKey {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct EcDsaKey {
+pub struct EcDsaPublicKey {
     pub identifier: String,
     pub q: MpInt
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct Ed25519Key {
+pub struct Ed25519PublicKey {
     pub enc_a: String
 }
 
 #[derive(PartialEq, Debug)]
 pub enum PublicKey {
-    Dss(DssKey),
-    Ed25519(Ed25519Key),
-    Rsa(RsaKey),
-    EcDsa(EcDsaKey)
+    Dss(DssPublicKey),
+    Ed25519(Ed25519PublicKey),
+    Rsa(RsaPublicKey),
+    EcDsa(EcDsaPublicKey)
 }
 
-impl From<private_key::RsaKey> for RsaKey {
-    fn from(key: private_key::RsaKey) -> Self {
+impl From<private_key::RsaPrivateKey> for RsaPublicKey {
+    fn from(key: private_key::RsaPrivateKey) -> Self {
         Self {
             e: key.e,
             n: key.n
@@ -47,8 +47,8 @@ impl From<private_key::RsaKey> for RsaKey {
     }
 }
 
-impl From<private_key::DssKey> for DssKey {
-    fn from(key: private_key::DssKey) -> Self {
+impl From<private_key::DssPrivateKey> for DssPublicKey {
+    fn from(key: private_key::DssPrivateKey) -> Self {
         Self {
             p: key.p,
             q: key.q,
@@ -58,8 +58,8 @@ impl From<private_key::DssKey> for DssKey {
     }
 }
 
-impl From<private_key::EcDsaKey> for EcDsaKey {
-    fn from(key: private_key::EcDsaKey) -> Self {
+impl From<private_key::EcDsaPrivateKey> for EcDsaPublicKey {
+    fn from(key: private_key::EcDsaPrivateKey) -> Self {
         Self {
             identifier: key.identifier,
             q: key.q
@@ -67,8 +67,8 @@ impl From<private_key::EcDsaKey> for EcDsaKey {
     }
 }
 
-impl From<private_key::Ed25519Key> for Ed25519Key {
-    fn from(key: private_key::Ed25519Key) -> Self {
+impl From<private_key::Ed25519PrivateKey> for Ed25519PublicKey {
+    fn from(key: private_key::Ed25519PrivateKey) -> Self {
         Self {
             enc_a: key.enc_a
         }
@@ -123,23 +123,23 @@ impl<'de> Deserialize<'de> for PublicKey {
                     .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
                 match key_type.as_str() {
                     "ssh-dss" => {
-                        let key: DssKey = seq.next_element()?
+                        let key: DssPublicKey = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                         Ok(PublicKey::Dss(key))
                     },
                     "ssh-ed25519" => {
-                        let key: Ed25519Key = seq.next_element()?
+                        let key: Ed25519PublicKey = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                         Ok(PublicKey::Ed25519(key))
                     },
                     "ssh-rsa" => {
-                        let key: RsaKey = seq.next_element()?
+                        let key: RsaPublicKey = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                         Ok(PublicKey::Rsa(key))
                     },
                     other => {
                         if other.starts_with("ecdsa-sha2-") {
-                            let key: EcDsaKey = seq.next_element()?
+                            let key: EcDsaPublicKey = seq.next_element()?
                                 .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
                             Ok(PublicKey::EcDsa(key))
                         } else {
