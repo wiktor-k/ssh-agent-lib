@@ -3,7 +3,10 @@ name = "ssh-agent"
 description = "Library for implementing an SSH agent"
 version = "0.0.0"
 license = "MIT"
-authors = ["Nicolas Trippar <ntrippar@gmail.com>"]
+authors = [
+    "Nicolas Trippar <ntrippar@gmail.com>",
+    "Federico Pomar <fmpomar@users.noreply.github.com>"
+]
 readme = "README.md"
 edition = "2018"
 
