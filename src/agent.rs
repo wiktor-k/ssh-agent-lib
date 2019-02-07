@@ -52,12 +52,13 @@ impl Encoder for MessageCodec {
 }
 
 macro_rules! handle_clients {
-    ($socket:ident, $process:ident) => {
+    ($socket:ident, $process:expr) => {
         $socket.incoming()
             .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
                 let (write, read) = Framed::new(socket, MessageCodec).split();
-                let connection = write.send_all(read.map($process))
+                let process_cloned = $process.clone();
+                let connection = write.send_all(read.map(process_cloned))
                     .map(|_| ())
                     .map_err(|e| error!("Error while reading message; error = {:?}", e));
                 tokio::spawn(connection)
@@ -65,19 +66,19 @@ macro_rules! handle_clients {
     };
 }
 
-pub fn start_unix<F>(path: &str, process: &'static F) -> Result<(), Box<std::error::Error>>
+pub fn start_unix<F>(path: &str, process: F) -> Result<(), Box<std::error::Error>>
 where
-    F: Fn(Message) -> Message + Send + Sync
+    F: 'static + Fn(Message) -> Message + Send + Sync + Clone
 {
     let socket = UnixListener::bind(path)?;
     info!("Listening; socket = {:?}", socket);
-    tokio::run(handle_clients!(socket, process));
+    tokio::run(handle_clients!(socket, &process));
     Ok(())
 }
 
-pub fn start_tcp<F>(addr: &str, process: &'static F) -> Result<(), Box<std::error::Error>>
+pub fn start_tcp<F>(addr: &str, process: F) -> Result<(), Box<std::error::Error>>
 where
-    F: Fn(Message) -> Message + Send + Sync
+    F: 'static + Fn(Message) -> Message + Send + Sync + Clone
 {
     let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
     info!("Listening; socket = {:?}", socket);

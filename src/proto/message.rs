@@ -2,26 +2,27 @@ use super::private_key::PrivateKey;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct Identity {
-    pub key_blob: Vec<u8>,
+    pub pubkey_blob: Vec<u8>,
     pub comment: String,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct SignRequest {
-    pub key_blob: Vec<u8>,
+    pub pubkey_blob: Vec<u8>,
     pub data: Vec<u8>,
     pub flags: u32
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct SignResponse {
+pub struct Signature {
+    pub signature_type: String,
     pub signature: Vec<u8>
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentity {
-    pub key_contents: PrivateKey,
-    pub key_comment: String
+    pub privkey: PrivateKey,
+    pub comment: String
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
@@ -32,7 +33,7 @@ pub struct AddIdentityConstrained {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct RemoveIdentity {
-    pub key_blob: Vec<u8>
+    pub pubkey_blob: Vec<u8>
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
@@ -77,7 +78,7 @@ pub enum Message {
     RequestIdentities,
     IdentitiesAnswer(Vec<Identity>),
     SignRequest(SignRequest),
-    SignResponse(SignResponse),
+    SignResponse(Signature),
     Reserved15,
     Reserved16,
     AddIdentity(AddIdentity),

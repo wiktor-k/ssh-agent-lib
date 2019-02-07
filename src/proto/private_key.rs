@@ -4,7 +4,7 @@ use super::error::ProtoError;
 
 pub type MpInt = Vec<u8>;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct DssPrivateKey {
     pub p: MpInt,
     pub q: MpInt,
@@ -13,13 +13,13 @@ pub struct DssPrivateKey {
     pub x: MpInt
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Ed25519PrivateKey {
     pub enc_a: String,
     pub k_enc_a: String
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct RsaPrivateKey {
     pub n: MpInt,
     pub e: MpInt,
@@ -29,14 +29,14 @@ pub struct RsaPrivateKey {
     pub q: MpInt
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct EcDsaPrivateKey {
     pub identifier: String,
     pub q: MpInt,
     pub d: MpInt
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum PrivateKey {
     Dss(DssPrivateKey),
     Ed25519(Ed25519PrivateKey),
@@ -44,81 +44,105 @@ pub enum PrivateKey {
     EcDsa(EcDsaPrivateKey)
 }
 
-impl Serialize for PrivateKey {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut serialize_tuple = serializer.serialize_tuple(2)?;
-        
-        match self {
-            PrivateKey::Dss(key) => {
-                serialize_tuple.serialize_element("ssh-dsa")?;
-                serialize_tuple.serialize_element(key)?;
-            },
-            PrivateKey::Ed25519(key) => {
-                serialize_tuple.serialize_element("ssh-ed25519")?;
-                serialize_tuple.serialize_element(key)?;
-            },
-            PrivateKey::Rsa(key) => {
-                serialize_tuple.serialize_element("ssh-rsa")?;
-                serialize_tuple.serialize_element(key)?;
-            },
-            PrivateKey::EcDsa(key) => {
-                serialize_tuple.serialize_element(
-                    format!("ecdsa-sha2-{}", key.identifier).as_str()
-                )?;
-                serialize_tuple.serialize_element(key)?;
-            }
-        };
-        
-        serialize_tuple.end()
+pub trait KeyEnum {
+    fn key_type(&self) -> String;
+}
+
+pub trait Key {
+    const KEY_TYPE: &'static str;
+    fn key_type(&self) -> String {
+        Self::KEY_TYPE.to_string()
     }
 }
 
-impl<'de> Deserialize<'de> for PrivateKey {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<PrivateKey, D::Error> {
-        struct KeyVisitor;
-        
-        impl<'de> serde::de::Visitor<'de> for KeyVisitor {
-            type Value = PrivateKey;
+impl Key for RsaPrivateKey {
+    const KEY_TYPE: &'static str = "ssh-rsa";
+}
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Private Key with format (type, key)")
-            }
+impl Key for DssPrivateKey {
+    const KEY_TYPE: &'static str = "ssh-dss";
+}
 
-            fn visit_seq<V: serde::de::SeqAccess<'de>>(
-                self,
-                mut seq: V
-            ) -> Result<PrivateKey, V::Error> {
-                let key_type: String = seq.next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-                match key_type.as_str() {
-                    "ssh-dss" => {
-                        let key: DssPrivateKey = seq.next_element()?
-                            .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                        Ok(PrivateKey::Dss(key))
-                    },
-                    "ssh-ed25519" => {
-                        let key: Ed25519PrivateKey = seq.next_element()?
-                            .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                        Ok(PrivateKey::Ed25519(key))
-                    },
-                    "ssh-rsa" => {
-                        let key: RsaPrivateKey = seq.next_element()?
-                            .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                        Ok(PrivateKey::Rsa(key))
-                    },
-                    other => {
-                        if other.starts_with("ecdsa-sha2-") {
-                            let key: EcDsaPrivateKey = seq.next_element()?
-                                .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                            Ok(PrivateKey::EcDsa(key))
-                        } else {
-                            Err(Error::custom(ProtoError::UnexpectedVariant))
-                        }
-                    } 
+impl Key for Ed25519PrivateKey {
+    const KEY_TYPE: &'static str = "ssh-ed25519";
+}
+
+impl Key for EcDsaPrivateKey {
+    const KEY_TYPE: &'static str = "ecdsa-sha2";
+    
+    fn key_type(&self) -> String {
+        format!("{}-{}", Self::KEY_TYPE, self.identifier).to_string()
+    }
+}
+
+#[macro_export]
+macro_rules! impl_key_enum_ser_de {
+    ($class_name:path, $(($variant_name:path, $variant_class:ty)),* ) => {
+        impl KeyEnum for $class_name {
+            fn key_type(&self) -> String {
+                match self {
+                    $($variant_name(key) => key.key_type()),*
                 }
             }
         }
         
-        deserializer.deserialize_tuple(2, KeyVisitor)
-    }
+        impl Serialize for $class_name {
+            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                let mut serialize_tuple = serializer.serialize_tuple(2)?;
+                
+                match self {
+                    $(
+                        $variant_name(key) => {
+                            serialize_tuple.serialize_element(&key.key_type())?;
+                            serialize_tuple.serialize_element(key)?;
+                        }
+                    ),*
+                };
+                serialize_tuple.end()
+            }
+        }
+        
+        impl<'de> Deserialize<'de> for $class_name {
+            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<$class_name, D::Error> {
+                struct KeyVisitor;
+                
+                impl<'de> serde::de::Visitor<'de> for KeyVisitor {
+                    type Value = $class_name;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str("Key with format (type, key)")
+                    }
+
+                    fn visit_seq<V: serde::de::SeqAccess<'de>>(
+                        self,
+                        mut seq: V
+                    ) -> Result<Self::Value, V::Error> {
+                        let key_type: String = seq.next_element()?
+                            .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+                        let key_type_str = key_type.as_str();
+                        
+                        $(
+                            if key_type_str.starts_with(<$variant_class>::KEY_TYPE) {
+                                let key: $variant_class = seq.next_element()?
+                                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+                                return Ok($variant_name(key))
+                            }
+                        )*
+                        
+                        return Err(Error::custom(ProtoError::UnexpectedVariant));
+                    }
+                }
+                
+                deserializer.deserialize_tuple(2, KeyVisitor)
+            }
+        }
+    };
 }
+
+impl_key_enum_ser_de!(
+    PrivateKey,
+    (PrivateKey::Dss, DssPrivateKey),
+    (PrivateKey::Rsa, RsaPrivateKey),
+    (PrivateKey::EcDsa, EcDsaPrivateKey),
+    (PrivateKey::Ed25519, Ed25519PrivateKey)
+);

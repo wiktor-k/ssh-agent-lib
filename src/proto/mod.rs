@@ -2,6 +2,8 @@ pub mod ser;
 pub mod de;
 pub mod message;
 pub mod error;
+
+#[macro_use]
 pub mod private_key;
 pub mod public_key;
 
@@ -30,7 +32,7 @@ impl<'a, T: Serialize + Deserialize<'a>> Blob for T {
 mod tests {
     use super::{to_bytes, from_bytes, Blob};
     use super::public_key::{PublicKey, RsaPublicKey};
-    use super::message::{Message, SignRequest, SignResponse, Identity};
+    use super::message::{Message, SignRequest, Signature, Identity};
 
     #[test]
     fn blob_serialization() {
@@ -51,7 +53,7 @@ mod tests {
         
         let sign_req = Message::SignRequest(
             SignRequest {
-                key_blob: key.to_blob().unwrap(),
+                pubkey_blob: key.to_blob().unwrap(),
                 data: b"data".to_vec(),
                 flags: 24
             }
@@ -60,7 +62,8 @@ mod tests {
         assert_eq!(sign_req, serde_sign_req);
         
         let sign_resp = Message::SignResponse(
-            SignResponse {
+            Signature {
+                signature_type: "ssh-key-type".to_string(),
                 signature: b"signature".to_vec()
             }
         );
@@ -74,11 +77,11 @@ mod tests {
         let ident_ans = Message::IdentitiesAnswer(
             vec![
                 Identity {
-                    key_blob: b"key_blob_1".to_vec(),
+                    pubkey_blob: b"key_blob_1".to_vec(),
                     comment: "comment_1".to_string()
                 },
                 Identity {
-                    key_blob: b"key_blob_2".to_vec(),
+                    pubkey_blob: b"key_blob_2".to_vec(),
                     comment: "".to_string()
                 }
             ]
