@@ -4,8 +4,10 @@ pub mod message;
 pub mod error;
 
 #[macro_use]
+pub mod key_type;
 pub mod private_key;
 pub mod public_key;
+pub mod signature;
 
 pub use self::ser::to_bytes;
 pub use self::de::from_bytes;
@@ -32,7 +34,8 @@ impl<'a, T: Serialize + Deserialize<'a>> Blob for T {
 mod tests {
     use super::{to_bytes, from_bytes, Blob};
     use super::public_key::{PublicKey, RsaPublicKey};
-    use super::message::{Message, SignRequest, Signature, Identity};
+    use super::message::{Message, SignRequest, Identity};
+    use super::signature::Signature;
 
     #[test]
     fn blob_serialization() {
@@ -63,9 +66,9 @@ mod tests {
         
         let sign_resp = Message::SignResponse(
             Signature {
-                signature_type: "ssh-key-type".to_string(),
-                signature: b"signature".to_vec()
-            }
+                algorithm: "signature algorithm".to_string(),
+                blob: b"signature_blob".to_vec()
+            }.to_blob().unwrap()
         );
         let serde_sign_resp: Message = from_bytes(&to_bytes(&sign_resp).unwrap()).unwrap();
         assert_eq!(sign_resp, serde_sign_resp);

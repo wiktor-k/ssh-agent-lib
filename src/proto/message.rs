@@ -14,12 +14,6 @@ pub struct SignRequest {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct Signature {
-    pub signature_type: String,
-    pub signature: Vec<u8>
-}
-
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentity {
     pub privkey: PrivateKey,
     pub comment: String
@@ -61,6 +55,7 @@ pub struct Extension {
 }
 
 type Passphrase = String;
+type SignatureBlob = Vec<u8>;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum Message {
@@ -78,7 +73,7 @@ pub enum Message {
     RequestIdentities,
     IdentitiesAnswer(Vec<Identity>),
     SignRequest(SignRequest),
-    SignResponse(Signature),
+    SignResponse(SignatureBlob),
     Reserved15,
     Reserved16,
     AddIdentity(AddIdentity),

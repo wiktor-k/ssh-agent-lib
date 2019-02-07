@@ -2,6 +2,7 @@ use serde::de::{Deserialize, Deserializer, Error};
 use serde::ser::{Serialize, Serializer, SerializeTuple};
 use super::error::ProtoError;
 use super::private_key::*;
+use super::key_type::{KeyType, KeyTypeEnum};
 
 pub type MpInt = Vec<u8>;
 
@@ -38,19 +39,19 @@ pub enum PublicKey {
     EcDsa(EcDsaPublicKey)
 }
 
-impl Key for RsaPublicKey {
+impl KeyType for RsaPublicKey {
     const KEY_TYPE: &'static str = RsaPrivateKey::KEY_TYPE;
 }
 
-impl Key for DssPublicKey {
+impl KeyType for DssPublicKey {
     const KEY_TYPE: &'static str = DssPrivateKey::KEY_TYPE;
 }
 
-impl Key for Ed25519PublicKey {
+impl KeyType for Ed25519PublicKey {
     const KEY_TYPE: &'static str = Ed25519PrivateKey::KEY_TYPE;
 }
 
-impl Key for EcDsaPublicKey {
+impl KeyType for EcDsaPublicKey {
     const KEY_TYPE: &'static str = EcDsaPrivateKey::KEY_TYPE;
     
     fn key_type(&self) -> String {
@@ -136,7 +137,7 @@ impl From<&Ed25519PrivateKey> for Ed25519PublicKey {
     }
 }
 
-impl_key_enum_ser_de!(
+impl_key_type_enum_ser_de!(
     PublicKey,
     (PublicKey::Dss, DssPublicKey),
     (PublicKey::Rsa, RsaPublicKey),
