@@ -2,7 +2,7 @@ use std::{string, io};
 use std::fmt::Display;
 
 #[derive(Debug)]
-pub enum ProtoError { 
+pub enum ProtoError {
     UnexpectedVariant,
     MessageTooLong,
     StringEncoding(string::FromUtf8Error),

@@ -7,7 +7,7 @@ use std::mem::size_of;
 
 use super::proto::{from_bytes, to_bytes};
 use super::proto::message::Message;
-use super::proto::error::ProtoError;
+use super::error::AgentError;
 
 use bytes::{BytesMut, BufMut};
 
@@ -19,7 +19,7 @@ struct MessageCodec;
 
 impl Decoder for MessageCodec {
     type Item = Message;
-    type Error = ProtoError;
+    type Error = AgentError;
     
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         let mut bytes = &src[..];
@@ -31,7 +31,7 @@ impl Decoder for MessageCodec {
         let length = bytes.read_u32::<BigEndian>()? as usize;
         
         if bytes.len() < length {
-            return Ok(None)
+            return Ok(None);
         }
         
         let message: Message = from_bytes(bytes)?;
@@ -42,7 +42,7 @@ impl Decoder for MessageCodec {
 
 impl Encoder for MessageCodec {
     type Item = Message;
-    type Error = ProtoError;
+    type Error = AgentError;
     
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = to_bytes(&to_bytes(&item)?)?;
@@ -52,36 +52,39 @@ impl Encoder for MessageCodec {
 }
 
 macro_rules! handle_clients {
-    ($socket:ident, $process:expr) => {
+    ($socket:ident, $process:expr) => {{
+        info!("Listening; socket = {:?}", $socket);
         $socket.incoming()
             .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
                 let (write, read) = Framed::new(socket, MessageCodec).split();
                 let process_cloned = $process.clone();
-                let connection = write.send_all(read.map(process_cloned))
-                    .map(|_| ())
-                    .map_err(|e| error!("Error while reading message; error = {:?}", e));
+                let connection = write.send_all(read.and_then(move |message| {
+                    process_cloned(message).or_else(|_| future::ok(Message::Failure))
+                })).map(|_| ())
+                   .map_err(|e| error!("Error while handling message; error = {:?}", e));
                 tokio::spawn(connection)
-            }).map_err(|e| e.into());
-    };
+            }).map_err(|e| e.into())
+    }};
 }
 
-pub fn start_unix<F>(path: &str, process: F) -> Result<(), Box<std::error::Error>>
+pub fn start_unix<F, P>(path: &str, process: P) -> Result<(), Box<std::error::Error>>
 where
-    F: 'static + Fn(Message) -> Message + Send + Sync + Clone
+    F: 'static + Future<Item = Message, Error = ()> + Send + Sync,
+    P: 'static + Fn(Message) -> F + Send + Sync + Clone,
 {
     let socket = UnixListener::bind(path)?;
-    info!("Listening; socket = {:?}", socket);
     tokio::run(handle_clients!(socket, &process));
     Ok(())
 }
 
-pub fn start_tcp<F>(addr: &str, process: F) -> Result<(), Box<std::error::Error>>
+
+pub fn start_tcp<F, P>(addr: &str, process: P) -> Result<(), Box<std::error::Error>>
 where
-    F: 'static + Fn(Message) -> Message + Send + Sync + Clone
+    F: 'static + Future<Item = Message, Error = ()> + Send + Sync,
+    P: 'static + Fn(Message) -> F + Send + Sync + Clone,
 {
     let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
-    info!("Listening; socket = {:?}", socket);
     tokio::run(handle_clients!(socket, process));
     Ok(())
 }

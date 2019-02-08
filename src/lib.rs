@@ -11,3 +11,4 @@ extern crate bytes;
 
 pub mod proto;
 pub mod agent;
+pub mod error;

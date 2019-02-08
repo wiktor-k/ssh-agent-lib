@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
 extern crate openssl;
 
 use ssh_agent::proto::{from_bytes, to_bytes};
@@ -10,9 +9,12 @@ use ssh_agent::proto::signature::{self, Signature};
 use ssh_agent::proto::public_key::PublicKey;
 use ssh_agent::proto::private_key::{PrivateKey, RsaPrivateKey};
 
+use futures::future::FutureResult;
+
 use ssh_agent::agent;
 
 use std::sync::{Mutex, Arc};
+use std::error::Error;
 
 use openssl::sign::Signer;
 use openssl::rsa::Rsa;
@@ -52,57 +54,62 @@ impl KeyStorage {
         self.identity_index_from_pubkey(pubkey).map(|i| &self.identities[i])
     }
     
-    fn sign(&self, sign_request: &SignRequest) -> Option<Signature> {
-        let pubkey: PublicKey = from_bytes(&sign_request.pubkey_blob).unwrap();
-        let identity = self.identity_from_pubkey(&pubkey)?;
+    fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<Error>> {
+        let pubkey: PublicKey = from_bytes(&sign_request.pubkey_blob)?;
         
-        match identity.privkey {
-            PrivateKey::Rsa(ref key) => {
-                let algorithm;
-                let digest;
-                
-                if sign_request.flags & signature::RSA_SHA2_512 != 0 {
-                    algorithm = "rsa-sha2-512";
-                    digest = MessageDigest::sha512();
-                } else if sign_request.flags & signature::RSA_SHA2_256 != 0 {
-                    algorithm = "rsa-sha2-256";
-                    digest = MessageDigest::sha256();
-                } else {
-                    algorithm = "ssh-rsa";
-                    digest = MessageDigest::sha1();
-                }
-                
-                let keypair = PKey::from_rsa(rsa_openssl_from_ssh(key)).unwrap();
-                let mut signer = Signer::new(digest, &keypair).unwrap();
-                signer.update(&sign_request.data).unwrap();
-                
-                Some(Signature {
-                    algorithm: algorithm.to_string(),
-                    blob: signer.sign_to_vec().unwrap()
-                })
-            },
-            _ => None
+        if let Some(identity) = self.identity_from_pubkey(&pubkey) {
+            match identity.privkey {
+                PrivateKey::Rsa(ref key) => {
+                    let algorithm;
+                    let digest;
+                    
+                    if sign_request.flags & signature::RSA_SHA2_512 != 0 {
+                        algorithm = "rsa-sha2-512";
+                        digest = MessageDigest::sha512();
+                    } else if sign_request.flags & signature::RSA_SHA2_256 != 0 {
+                        algorithm = "rsa-sha2-256";
+                        digest = MessageDigest::sha256();
+                    } else {
+                        algorithm = "ssh-rsa";
+                        digest = MessageDigest::sha1();
+                    }
+                    
+                    let keypair = PKey::from_rsa(rsa_openssl_from_ssh(key)?)?;
+                    let mut signer = Signer::new(digest, &keypair)?;
+                    signer.update(&sign_request.data)?;
+                    
+                    Ok(Signature {
+                        algorithm: algorithm.to_string(),
+                        blob: signer.sign_to_vec()?
+                    })
+                },
+                _ => Err(From::from("Signature for key type not implemented"))
+            }
+        } else {
+            Err(From::from("Failed to create signature: identity not found"))
         }
     }
     
-    fn handle_message(&mut self, request: Message) -> Message {
-        debug!("Request: {:?}", request);
+    fn handle_message(&mut self, request: Message) -> Result<Message, Box<Error>>  {
+        info!("Request: {:?}", request);
         let response = match request {
             Message::RequestIdentities => {
-                Message::IdentitiesAnswer(self.identities.iter().map(|identity| {
-                    message::Identity {
-                        pubkey_blob: to_bytes(&identity.pubkey).unwrap(),
+                let mut identities = vec![];
+                for identity in &self.identities {
+                    identities.push(message::Identity {
+                        pubkey_blob: to_bytes(&identity.pubkey)?,
                         comment: identity.comment.clone()
-                    }
-                }).collect())
+                    })
+                }
+                Ok(Message::IdentitiesAnswer(identities))
             },
             Message::RemoveIdentity(identity) => {
-                let pubkey: PublicKey = from_bytes(&identity.pubkey_blob).unwrap();
+                let pubkey: PublicKey = from_bytes(&identity.pubkey_blob)?;
                 if let Some(index) = self.identity_index_from_pubkey(&pubkey) {
                     self.identities.remove(index);
-                    Message::Success
+                    Ok(Message::Success)
                 } else {
-                    Message::Failure
+                    Err(From::from("Failed to remove identity: identity not found"))
                 }
             },
             Message::AddIdentity(identity) => {
@@ -114,41 +121,42 @@ impl KeyStorage {
                         comment: identity.comment
                     });
                 }
-                Message::Success
+                Ok(Message::Success)
             },
             Message::SignRequest(request) => {
-                if let Some(signature) = self.sign(&request) {
-                    Message::SignResponse(to_bytes(&signature).unwrap())
-                } else {
-                    Message::Failure
-                }
+                let signature = to_bytes(&self.sign(&request)?)?;
+                Ok(Message::SignResponse(signature))
             },
-            _ => Message::Failure
+            _ => Err(From::from(format!("Unknown message: {:?}", request)))
         };
-        debug!("Response {:?}", response);
+        info!("Response {:?}", response);
         return response;
     }
 }
 
-fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Rsa<Private> {
-    let n = BigNum::from_slice(&ssh_rsa.n).unwrap();
-    let e = BigNum::from_slice(&ssh_rsa.e).unwrap();
-    let d = BigNum::from_slice(&ssh_rsa.d).unwrap();
-    let qi = BigNum::from_slice(&ssh_rsa.iqmp).unwrap();
-    let p = BigNum::from_slice(&ssh_rsa.p).unwrap();
-    let q = BigNum::from_slice(&ssh_rsa.q).unwrap();
-    let dp = &d % &(&p - &BigNum::from_u32(1).unwrap());
-    let dq = &d % &(&q - &BigNum::from_u32(1).unwrap());
+fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<Error>> {
+    let n = BigNum::from_slice(&ssh_rsa.n)?;
+    let e = BigNum::from_slice(&ssh_rsa.e)?;
+    let d = BigNum::from_slice(&ssh_rsa.d)?;
+    let qi = BigNum::from_slice(&ssh_rsa.iqmp)?;
+    let p = BigNum::from_slice(&ssh_rsa.p)?;
+    let q = BigNum::from_slice(&ssh_rsa.q)?;
+    let dp = &d % &(&p - &BigNum::from_u32(1)?);
+    let dq = &d % &(&q - &BigNum::from_u32(1)?);
     
-    Rsa::from_private_components(n, e, d, p, q, dp, dq, qi).unwrap()
+    Ok(Rsa::from_private_components(n, e, d, p, q, dp, dq, qi)?)
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let storage = Arc::new(Mutex::new(KeyStorage::new()));
     
     env_logger::init();
-    agent::start_unix("connect.sock", move |message| {
-        (&storage).clone().lock().unwrap().handle_message(message)
+    agent::start_unix("connect.sock", move |request| {
+        FutureResult::from(storage.clone().lock().unwrap()
+                           .handle_message(request)
+                           .map_err(|error| {
+                               error!("Error handling message; error = {}", error.description());
+                           }))
     })?;
     Ok(())
 }
