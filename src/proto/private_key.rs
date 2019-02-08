@@ -61,7 +61,7 @@ impl KeyType for EcDsaPrivateKey {
     const KEY_TYPE: &'static str = "ecdsa-sha2";
     
     fn key_type(&self) -> String {
-        format!("{}-{}", Self::KEY_TYPE, self.identifier).to_string()
+        format!("{}-{}", Self::KEY_TYPE, self.identifier)
     }
 }
 

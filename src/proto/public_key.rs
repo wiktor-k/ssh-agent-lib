@@ -55,7 +55,7 @@ impl KeyType for EcDsaPublicKey {
     const KEY_TYPE: &'static str = EcDsaPrivateKey::KEY_TYPE;
     
     fn key_type(&self) -> String {
-        format!("{}-{}", Self::KEY_TYPE, self.identifier).to_string()
+        format!("{}-{}", Self::KEY_TYPE, self.identifier)
     }
 }
 
