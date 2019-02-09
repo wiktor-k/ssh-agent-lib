@@ -1,19 +1,25 @@
 pub mod ser;
 pub mod de;
-pub mod message;
-pub mod error;
 
 #[macro_use]
 pub mod key_type;
 pub mod private_key;
 pub mod public_key;
 pub mod signature;
+pub mod message;
+pub mod error;
 
 pub use self::ser::to_bytes;
 pub use self::de::from_bytes;
 
+pub use self::key_type::*;
+pub use self::private_key::*;
+pub use self::public_key::*;
+pub use self::signature::*;
+pub use self::message::*;
+pub use self::error::*;
+
 use serde::{Serialize, Deserialize};
-use self::error::ProtoResult;
 
 pub trait Blob: Sized {
     fn to_blob(&self) -> ProtoResult<Vec<u8>>;

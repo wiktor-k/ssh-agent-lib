@@ -12,3 +12,5 @@ extern crate bytes;
 pub mod proto;
 pub mod agent;
 pub mod error;
+
+pub use self::agent::Agent;
