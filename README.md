@@ -3,7 +3,7 @@
 [![Crate][crate-image]][crate-link]
 [![Build Status][build-image]][build-link]
 [![MIT Licensed][license-image]][license-link]
-
+[![CodeCov][codecov-image]][codecov-link]
 
 
 
@@ -13,3 +13,5 @@
 [build-link]: https://travis-ci.org/sekey/ssh-agent.rs
 [license-image]: https://img.shields.io/github/license/sekey/ssh-agent.rs.svg
 [license-link]: https://github.com/sekey/ssh-agent.rs/blob/master/LICENSE
+[codecov-image]: https://codecov.io/gh/sekey/ssh-agent.rs/branch/master/graph/badge.svg
+[codecov-link]: https://codecov.io/gh/sekey/ssh-agent.rs
