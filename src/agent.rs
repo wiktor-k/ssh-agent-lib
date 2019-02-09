@@ -4,6 +4,9 @@ use std::net::SocketAddr;
 use tokio::prelude::*;
 
 use std::mem::size_of;
+use std::error::Error;
+use std::sync::Arc;
+use std::fmt::Debug;
 
 use super::proto::{from_bytes, to_bytes};
 use super::proto::message::Message;
@@ -14,6 +17,8 @@ use bytes::{BytesMut, BufMut};
 use byteorder::{BigEndian, ReadBytesExt};
 
 use tokio::codec::{Framed, Encoder, Decoder};
+
+use futures::future::FutureResult;
 
 struct MessageCodec;
 
@@ -52,15 +57,19 @@ impl Encoder for MessageCodec {
 }
 
 macro_rules! handle_clients {
-    ($socket:ident, $process:expr) => {{
+    ($self:ident, $socket:ident) => {{
         info!("Listening; socket = {:?}", $socket);
+        let arc_self = Arc::new($self);
         $socket.incoming()
             .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
                 let (write, read) = Framed::new(socket, MessageCodec).split();
-                let process_cloned = $process.clone();
+                let arc_self = arc_self.clone();
                 let connection = write.send_all(read.and_then(move |message| {
-                    process_cloned(message).or_else(|_| future::ok(Message::Failure))
+                    arc_self.handle_async(message).map_err(|e| {
+                        error!("Error handling message; error = {:?}", e);
+                        AgentError::User
+                    })
                 })).map(|_| ())
                    .map_err(|e| error!("Error while handling message; error = {:?}", e));
                 tokio::spawn(connection)
@@ -68,23 +77,25 @@ macro_rules! handle_clients {
     }};
 }
 
-pub fn start_unix<F, P>(path: &str, process: P) -> Result<(), Box<std::error::Error>>
-where
-    F: 'static + Future<Item = Message, Error = ()> + Send + Sync,
-    P: 'static + Fn(Message) -> F + Send + Sync + Clone,
-{
-    let socket = UnixListener::bind(path)?;
-    tokio::run(handle_clients!(socket, &process));
-    Ok(())
-}
+pub trait Agent: 'static + Sync + Send + Sized {
+    type Error: Debug + Send + Sync;
+    
+    fn handle(&self, message: Message) -> Result<Message, Self::Error>;
+    
+    fn handle_async(
+        &self,
+        message: Message
+    ) -> Box<Future<Item = Message, Error = Self::Error> + Send + Sync> {
+        Box::new(FutureResult::from(self.handle(message)))
+    }
+    
+    fn run_unix(self, path: &str) -> Result<(), Box<Error>> {
+        let socket = UnixListener::bind(path)?;
+        Ok(tokio::run(handle_clients!(self, socket)))
+    }
 
-
-pub fn start_tcp<F, P>(addr: &str, process: P) -> Result<(), Box<std::error::Error>>
-where
-    F: 'static + Future<Item = Message, Error = ()> + Send + Sync,
-    P: 'static + Fn(Message) -> F + Send + Sync + Clone,
-{
-    let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
-    tokio::run(handle_clients!(socket, process));
-    Ok(())
+    fn run_tcp(self, addr: &str) -> Result<(), Box<Error>> {
+        let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
+        Ok(tokio::run(handle_clients!(self, socket)))
+    }
 }
