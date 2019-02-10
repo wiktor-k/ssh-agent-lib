@@ -1,16 +1,78 @@
 use super::{to_bytes, from_bytes, Blob};
-use super::public_key::{PublicKey, RsaPublicKey};
+use super::public_key::*;
+use super::private_key::*;
 use super::message::{Message, SignRequest, Identity};
 use super::signature::Signature;
 
 #[test]
-fn blob_serialization() {
-    let key = PublicKey::Rsa(RsaPublicKey {
+fn pubkey_blob_serialization() {
+    let rsa_key = PublicKey::Rsa(RsaPublicKey {
         e: vec![1, 0, 1],
         n: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     });
-    let serde_key = PublicKey::from_blob(&key.to_blob().unwrap()).unwrap();
-    assert_eq!(key, serde_key);
+    let serde_rsa_key = PublicKey::from_blob(&rsa_key.to_blob().unwrap()).unwrap();
+    assert_eq!(rsa_key, serde_rsa_key);
+    
+    let dss_key = PublicKey::Dss(DssPublicKey {
+        p: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        q: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        g: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        y: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_dss_key = PublicKey::from_blob(&dss_key.to_blob().unwrap()).unwrap();
+    assert_eq!(dss_key, serde_dss_key);
+    
+    let ed25519_key = PublicKey::Ed25519(Ed25519PublicKey {
+        enc_a: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_ed25519_key = PublicKey::from_blob(&ed25519_key.to_blob().unwrap()).unwrap();
+    assert_eq!(ed25519_key, serde_ed25519_key);
+    
+    let ecdsa_key = PublicKey::EcDsa(EcDsaPublicKey {
+        identifier: "some_identifier".to_string(),
+        q: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_ecdsa_key = PublicKey::from_blob(&ecdsa_key.to_blob().unwrap()).unwrap();
+    assert_eq!(ecdsa_key, serde_ecdsa_key);
+}
+
+#[test]
+fn privkey_blob_serialization() {
+    let rsa_key = PrivateKey::Rsa(RsaPrivateKey {
+        e: vec![1, 0, 1],
+        n: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        d: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        iqmp: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        p: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        q: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_rsa_key = PrivateKey::from_blob(&rsa_key.to_blob().unwrap()).unwrap();
+    assert_eq!(rsa_key, serde_rsa_key);
+    
+    let dss_key = PrivateKey::Dss(DssPrivateKey {
+        p: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        q: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        g: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        y: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        x: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_dss_key = PrivateKey::from_blob(&dss_key.to_blob().unwrap()).unwrap();
+    assert_eq!(dss_key, serde_dss_key);
+    
+    let ed25519_key = PrivateKey::Ed25519(Ed25519PrivateKey {
+        enc_a: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        k_enc_a: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_ed25519_key = PrivateKey::from_blob(&ed25519_key.to_blob().unwrap()).unwrap();
+    assert_eq!(ed25519_key, serde_ed25519_key);
+    
+    let ecdsa_key = PrivateKey::EcDsa(EcDsaPrivateKey {
+        identifier: "some_identifier".to_string(),
+        q: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        d: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    });
+    let serde_ecdsa_key = PrivateKey::from_blob(&ecdsa_key.to_blob().unwrap()).unwrap();
+    assert_eq!(ecdsa_key, serde_ecdsa_key);
 }
 
 #[test]
