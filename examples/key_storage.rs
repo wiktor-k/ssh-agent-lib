@@ -12,6 +12,7 @@ use ssh_agent::agent::Agent;
 
 use std::sync::RwLock;
 use std::error::Error;
+use std::fs::remove_file;
 
 use openssl::sign::Signer;
 use openssl::rsa::Rsa;
@@ -175,8 +176,10 @@ fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<Err
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let agent = KeyStorage::new();
+    let socket = "connect.sock";
+    let _ = remove_file(socket);
     
     env_logger::init();
-    agent.run_unix("connect.sock")?;
+    agent.run_unix(socket)?;
     Ok(())
 }
