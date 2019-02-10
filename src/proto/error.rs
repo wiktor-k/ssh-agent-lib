@@ -1,4 +1,5 @@
 use std::{string, io};
+use std::error::Error;
 use std::fmt::Display;
 
 #[derive(Debug)]
@@ -67,7 +68,7 @@ impl std::error::Error for ProtoError {
 
 impl std::fmt::Display for ProtoError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Error")
+        f.write_str(self.description())
     }
 }
 
