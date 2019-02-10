@@ -8,6 +8,7 @@ use serde::de::{
 
 use super::error::{ProtoError, ProtoResult};
 
+#[derive(Debug)]
 pub struct Deserializer<R: io::Read> {
     reader: R,
 }
