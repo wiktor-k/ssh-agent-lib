@@ -28,7 +28,7 @@ pub struct EcDsaPublicKey {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Ed25519PublicKey {
-    pub enc_a: String
+    pub enc_a: Vec<u8>
 }
 
 #[derive(Clone, PartialEq, Debug)]
