@@ -54,8 +54,8 @@ pub struct Extension {
     extension_contents: Vec<u8>
 }
 
-type Passphrase = String;
-type SignatureBlob = Vec<u8>;
+pub type Passphrase = String;
+pub type SignatureBlob = Vec<u8>;
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Message {
