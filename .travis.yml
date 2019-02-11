@@ -8,7 +8,6 @@ rust:
 
 os:
   - linux
-  - osx
 
 branches:
   only:

@@ -3,6 +3,7 @@ use serde::ser::{self, Serialize};
 use std::io;
 use super::error::{ProtoError, ProtoResult};
 
+#[derive(Debug)]
 pub struct Serializer<W: io::Write> {
     // This string starts empty and JSON is appended as values are serialized.
     writer: W

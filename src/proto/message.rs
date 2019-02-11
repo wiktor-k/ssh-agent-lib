@@ -1,54 +1,54 @@
 use super::private_key::PrivateKey;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Identity {
     pub pubkey_blob: Vec<u8>,
     pub comment: String,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SignRequest {
     pub pubkey_blob: Vec<u8>,
     pub data: Vec<u8>,
     pub flags: u32
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentity {
     pub privkey: PrivateKey,
     pub comment: String
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentityConstrained {
     pub identity: AddIdentity,
     pub constraints: Vec<KeyConstraint>
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct RemoveIdentity {
     pub pubkey_blob: Vec<u8>
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SmartcardKey {
     pub id: String,
     pub pin: String
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct KeyConstraint {
     pub constraint_type: u8,
     pub constraint_data: Vec<u8>
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddSmartcardKeyConstrained {
     pub key: SmartcardKey,
     pub constraints: Vec<KeyConstraint>
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Extension {
     extension_type: String,
     extension_contents: Vec<u8>
@@ -57,7 +57,7 @@ pub struct Extension {
 type Passphrase = String;
 type SignatureBlob = Vec<u8>;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Message {
     Reserved0,
     Reserved1,

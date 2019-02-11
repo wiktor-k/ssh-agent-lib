@@ -16,8 +16,8 @@ pub struct DssPrivateKey {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Ed25519PrivateKey {
-    pub enc_a: String,
-    pub k_enc_a: String
+    pub enc_a: Vec<u8>,
+    pub k_enc_a: Vec<u8>
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]

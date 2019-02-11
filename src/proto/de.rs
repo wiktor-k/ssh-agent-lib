@@ -8,6 +8,7 @@ use serde::de::{
 
 use super::error::{ProtoError, ProtoResult};
 
+#[derive(Debug)]
 pub struct Deserializer<R: io::Read> {
     reader: R,
 }
@@ -17,6 +18,10 @@ impl<R: io::Read> Deserializer<R> {
         Deserializer {
             reader: reader
         }
+    }
+    
+    pub fn to_reader(self) -> R {
+        self.reader
     }
     
     fn read_buf(&mut self) -> ProtoResult<Vec<u8>> {
@@ -29,7 +34,16 @@ impl<R: io::Read> Deserializer<R> {
 
 pub fn from_bytes<'a, T: Deserialize<'a>>(bytes: &[u8]) -> ProtoResult<T> {
     let mut deserializer = Deserializer::from_reader(bytes);
-    Ok(T::deserialize(&mut deserializer)?)
+    let result = T::deserialize(&mut deserializer)?;
+    let remaining_bytes = deserializer.to_reader();
+    
+    if remaining_bytes.len() == 0 {
+        Ok(result)
+    } else {
+        Err(ProtoError::Deserialization(
+            format!("Buffer not depleted. Remaining bytes: {:?}", remaining_bytes)
+        ))
+    }
 }
 
 impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
