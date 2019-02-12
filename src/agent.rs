@@ -3,10 +3,11 @@ use tokio::net::TcpListener;
 use std::net::SocketAddr;
 use tokio::prelude::*;
 
-use std::mem::size_of;
 use std::error::Error;
-use std::sync::Arc;
 use std::fmt::Debug;
+use std::mem::size_of;
+use std::path::Path;
+use std::sync::Arc;
 
 use super::proto::{from_bytes, to_bytes};
 use super::proto::message::Message;
@@ -89,7 +90,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
         Box::new(FutureResult::from(self.handle(message)))
     }
     
-    fn run_unix(self, path: &str) -> Result<(), Box<Error>> {
+    fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<Error>> {
         let socket = UnixListener::bind(path)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }
