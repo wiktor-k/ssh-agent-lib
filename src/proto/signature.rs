@@ -15,14 +15,14 @@ pub struct Signature {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct EcDsaSignature {
-    identifier: String,
-    data: EcDsaSignatureData
+    pub identifier: String,
+    pub data: EcDsaSignatureData
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct EcDsaSignatureData {
-    r: Vec<u8>,
-    s: Vec<u8>
+    pub r: Vec<u8>,
+    pub s: Vec<u8>
 }
 
 impl From<EcDsaSignature> for Signature {
