@@ -1,7 +1,6 @@
 #![deny(missing_debug_implementations)]
 
 extern crate byteorder;
-extern crate num_traits;
 
 #[macro_use]
 extern crate log;
