@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::private_key::PrivateKey;
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]

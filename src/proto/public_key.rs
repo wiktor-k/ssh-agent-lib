@@ -1,5 +1,6 @@
-use serde::de::{Deserialize, Deserializer, Error};
-use serde::ser::{Serialize, Serializer, SerializeTuple};
+use serde::{Deserialize, Serialize};
+use serde::de::{Deserializer, Error};
+use serde::ser::{Serializer, SerializeTuple};
 use super::error::ProtoError;
 use super::private_key::*;
 use super::key_type::{KeyType, KeyTypeEnum};

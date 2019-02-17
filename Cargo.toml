@@ -17,8 +17,7 @@ codecov = { repository = "sekey/ssh-agent.rs" }
 
 [dependencies]
 byteorder = "1.2.7"
-serde = "1.0.87"
-serde_derive = "1.0.87"
+serde = {version = "1.0.87", features = ["derive"]}
 bytes = "0.4.11"
 tokio = "0.1.15"
 tokio-uds = "0.2.5"

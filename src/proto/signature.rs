@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::private_key::*;
 use super::key_type::{KeyType};
 use super::to_bytes;
