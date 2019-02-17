@@ -1,25 +1,22 @@
-use tokio_uds::UnixListener;
+use byteorder::{BigEndian, ReadBytesExt};
+use bytes::{BytesMut, BufMut};
+use futures::future::FutureResult;
+use log::{error, info};
+use tokio::codec::{Framed, Encoder, Decoder};
 use tokio::net::TcpListener;
-use std::net::SocketAddr;
 use tokio::prelude::*;
+use tokio_uds::UnixListener;
 
 use std::error::Error;
 use std::fmt::Debug;
 use std::mem::size_of;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 
-use super::proto::{from_bytes, to_bytes};
-use super::proto::message::Message;
 use super::error::AgentError;
-
-use bytes::{BytesMut, BufMut};
-
-use byteorder::{BigEndian, ReadBytesExt};
-
-use tokio::codec::{Framed, Encoder, Decoder};
-
-use futures::future::FutureResult;
+use super::proto::message::Message;
+use super::proto::{from_bytes, to_bytes};
 
 struct MessageCodec;
 
