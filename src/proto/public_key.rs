@@ -1,18 +1,19 @@
-use serde::de::{Deserialize, Deserializer, Error};
-use serde::ser::{Serialize, Serializer, SerializeTuple};
+use serde::{Deserialize, Serialize};
+use serde::de::{Deserializer, Error};
+use serde::ser::{Serializer, SerializeTuple};
 use super::error::ProtoError;
 use super::private_key::*;
 use super::key_type::{KeyType, KeyTypeEnum};
 
 pub type MpInt = Vec<u8>;
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct RsaPublicKey {
     pub e: MpInt,
     pub n: MpInt
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct DssPublicKey {
     pub p: MpInt,
     pub q: MpInt,
@@ -20,18 +21,18 @@ pub struct DssPublicKey {
     pub y: MpInt
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct EcDsaPublicKey {
     pub identifier: String,
     pub q: MpInt
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Ed25519PublicKey {
     pub enc_a: Vec<u8>
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PublicKey {
     Dss(DssPublicKey),
     Ed25519(Ed25519PublicKey),

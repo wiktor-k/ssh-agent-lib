@@ -1,24 +1,22 @@
-use tokio_uds::UnixListener;
-use tokio::net::TcpListener;
-use std::net::SocketAddr;
-use tokio::prelude::*;
-
-use std::mem::size_of;
-use std::error::Error;
-use std::sync::Arc;
-use std::fmt::Debug;
-
-use super::proto::{from_bytes, to_bytes};
-use super::proto::message::Message;
-use super::error::AgentError;
-
-use bytes::{BytesMut, BufMut};
-
 use byteorder::{BigEndian, ReadBytesExt};
-
-use tokio::codec::{Framed, Encoder, Decoder};
-
+use bytes::{BytesMut, BufMut};
 use futures::future::FutureResult;
+use log::{error, info};
+use tokio::codec::{Framed, Encoder, Decoder};
+use tokio::net::TcpListener;
+use tokio::prelude::*;
+use tokio_uds::UnixListener;
+
+use std::error::Error;
+use std::fmt::Debug;
+use std::mem::size_of;
+use std::net::SocketAddr;
+use std::path::Path;
+use std::sync::Arc;
+
+use super::error::AgentError;
+use super::proto::message::Message;
+use super::proto::{from_bytes, to_bytes};
 
 struct MessageCodec;
 
@@ -89,7 +87,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
         Box::new(FutureResult::from(self.handle(message)))
     }
     
-    fn run_unix(self, path: &str) -> Result<(), Box<Error>> {
+    fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<Error>> {
         let socket = UnixListener::bind(path)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }

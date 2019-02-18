@@ -1,7 +1,4 @@
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-extern crate openssl;
+use log::info;
 
 use ssh_agent::proto::{from_bytes, to_bytes};
 use ssh_agent::proto::message::{self, Message, SignRequest};

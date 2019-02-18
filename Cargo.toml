@@ -1,12 +1,13 @@
 [package]
 name = "ssh-agent"
 description = "Library for implementing an SSH agent"
-version = "0.2.0"
+version = "0.2.1"
 license = "MIT"
 authors = [
     "Nicolas Trippar <ntrippar@gmail.com>",
     "Federico Pomar <fmpomar@users.noreply.github.com>"
 ]
+repository = "https://github.com/sekey/ssh-agent.rs"
 readme = "README.md"
 edition = "2018"
 
@@ -16,10 +17,7 @@ codecov = { repository = "sekey/ssh-agent.rs" }
 
 [dependencies]
 byteorder = "1.2.7"
-num-derive = "0.2"
-num-traits = "0.2"
-serde = "1.0.87"
-serde_derive = "1.0.87"
+serde = {version = "1.0.87", features = ["derive"]}
 bytes = "0.4.11"
 tokio = "0.1.15"
 tokio-uds = "0.2.5"

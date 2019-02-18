@@ -315,10 +315,8 @@ impl<'a, W: io::Write> ser::SerializeStructVariant for &'a mut Serializer<W> {
 
 
 pub fn to_bytes<T: Serialize>(value: &T) -> ProtoResult<Vec<u8>> {
-    use bytes::BufMut;
-    let writer = vec![].writer();
-    let mut serializer = Serializer::from_writer(writer);
+    let mut serializer = Serializer::from_writer(Vec::new());
     value.serialize(&mut serializer)?;
-    Ok(serializer.writer.into_inner())
+    Ok(serializer.writer)
 }
 
