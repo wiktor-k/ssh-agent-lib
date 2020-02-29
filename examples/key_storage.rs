@@ -171,7 +171,7 @@ fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<dyn
     Ok(Rsa::from_private_components(n, e, d, p, q, dp, dq, qi)?)
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let agent = KeyStorage::new();
     let socket = "connect.sock";
     let _ = remove_file(socket);

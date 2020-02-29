@@ -87,12 +87,12 @@ pub trait Agent: 'static + Sync + Send + Sized {
         Box::new(FutureResult::from(self.handle(message)))
     }
     
-    fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+    fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<dyn Error + Send + Sync>> {
         let socket = UnixListener::bind(path)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }
 
-    fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error>> {
+    fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }
