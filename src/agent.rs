@@ -83,16 +83,16 @@ pub trait Agent: 'static + Sync + Send + Sized {
     fn handle_async(
         &self,
         message: Message
-    ) -> Box<Future<Item = Message, Error = Self::Error> + Send + Sync> {
+    ) -> Box<dyn Future<Item = Message, Error = Self::Error> + Send + Sync> {
         Box::new(FutureResult::from(self.handle(message)))
     }
     
-    fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<Error>> {
+    fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
         let socket = UnixListener::bind(path)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }
 
-    fn run_tcp(self, addr: &str) -> Result<(), Box<Error>> {
+    fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error>> {
         let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }

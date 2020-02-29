@@ -54,7 +54,7 @@ impl std::error::Error for ProtoError {
         }
     }
 
-    fn cause(&self) -> Option<&std::error::Error> {
+    fn cause(&self) -> Option<&dyn std::error::Error> {
         match self {
             ProtoError::UnexpectedVariant => None,
             ProtoError::MessageTooLong => None,

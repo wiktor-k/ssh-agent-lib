@@ -62,7 +62,7 @@ impl KeyStorage {
         }
     }
     
-    fn identity_remove(&self, pubkey: &PublicKey) -> Result<(), Box<Error>> {
+    fn identity_remove(&self, pubkey: &PublicKey) -> Result<(), Box<dyn Error>> {
         let mut identities = self.identities.write().unwrap();
         
         if let Some(index) = Self::identity_index_from_pubkey(&identities, &pubkey) {
@@ -73,7 +73,7 @@ impl KeyStorage {
         }
     }
     
-    fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<Error>> {
+    fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<dyn Error>> {
         let pubkey: PublicKey = from_bytes(&sign_request.pubkey_blob)?;
         
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
@@ -109,7 +109,7 @@ impl KeyStorage {
         }
     }
     
-    fn handle_message(&self, request: Message) -> Result<Message, Box<Error>>  {
+    fn handle_message(&self, request: Message) -> Result<Message, Box<dyn Error>>  {
         info!("Request: {:?}", request);
         let response = match request {
             Message::RequestIdentities => {
@@ -158,7 +158,7 @@ impl Agent for KeyStorage {
 }
 
 
-fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<Error>> {
+fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<dyn Error>> {
     let n = BigNum::from_slice(&ssh_rsa.n)?;
     let e = BigNum::from_slice(&ssh_rsa.e)?;
     let d = BigNum::from_slice(&ssh_rsa.d)?;
@@ -171,7 +171,7 @@ fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<Err
     Ok(Rsa::from_private_components(n, e, d, p, q, dp, dq, qi)?)
 }
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let agent = KeyStorage::new();
     let socket = "connect.sock";
     let _ = remove_file(socket);
