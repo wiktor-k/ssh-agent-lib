@@ -9,7 +9,6 @@ pub trait KeyType {
     }
 }
 
-#[macro_export]
 macro_rules! impl_key_type_enum_ser_de {
     ($class_name:path, $(($variant_name:path, $variant_class:ty)),* ) => {
         impl KeyTypeEnum for $class_name {
