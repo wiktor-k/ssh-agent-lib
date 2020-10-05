@@ -18,11 +18,19 @@ codecov = { repository = "sekey/ssh-agent.rs" }
 [dependencies]
 byteorder = "1.2.7"
 serde = {version = "1.0.87", features = ["derive"]}
-bytes = "0.4.11"
-tokio = "0.1.15"
-tokio-uds = "0.2.5"
 futures = "0.1.25"
 log = "0.4.6"
+
+bytes = { version = "0.4.11", optional = true }
+tokio = { version = "0.1.15", optional = true }
+tokio-uds = { version = "0.2.5", optional = true }
+
+[features]
+agent = ["tokio", "tokio-uds", "bytes"]
+
+[[example]]
+name = "key_storage"
+required-features = ["agent"]
 
 [dev-dependencies]
 env_logger = "0.6.0"
