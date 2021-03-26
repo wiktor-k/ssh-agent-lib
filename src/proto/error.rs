@@ -43,18 +43,7 @@ impl serde::de::Error for ProtoError {
 }
 
 impl std::error::Error for ProtoError {
-    fn description(&self) -> &str {
-        match self {
-            ProtoError::UnexpectedVariant => "Unexpected variant",
-            ProtoError::MessageTooLong => "Message too long",
-            ProtoError::StringEncoding(_) => "String encoding failed",
-            ProtoError::IO(_) => "I/O Error",
-            ProtoError::Serialization(_) => "Serialization Error",
-            ProtoError::Deserialization(_) => "Deserialization Error"
-        }
-    }
-
-    fn cause(&self) -> Option<&dyn std::error::Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ProtoError::UnexpectedVariant => None,
             ProtoError::MessageTooLong => None,
@@ -68,7 +57,14 @@ impl std::error::Error for ProtoError {
 
 impl std::fmt::Display for ProtoError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(self.description())
+        match self {
+            ProtoError::UnexpectedVariant => f.write_str("Unexpected variant"),
+            ProtoError::MessageTooLong => f.write_str("Message too long"),
+            ProtoError::StringEncoding(_) => f.write_str("String encoding failed"),
+            ProtoError::IO(_) => f.write_str("I/O Error"),
+            ProtoError::Serialization(_) => f.write_str("Serialization Error"),
+            ProtoError::Deserialization(_) => f.write_str("Deserialization Error")
+        }
     }
 }
 
