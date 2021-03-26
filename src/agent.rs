@@ -1,18 +1,18 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use bytes::{BytesMut, BufMut};
-use futures::future::FutureResult;
-use log::{error, info};
-use tokio::codec::{Framed, Encoder, Decoder};
-use tokio::net::TcpListener;
-use tokio::prelude::*;
-use tokio_uds::UnixListener;
+use bytes::{BytesMut, BufMut, Buf};
+use futures::{SinkExt, StreamExt, future::Future};
 
-use std::error::Error;
+use log::{error, info};
+
+use tokio_util::codec::{Framed, Encoder, Decoder};
+use tokio::net::{TcpListener, UnixListener};
+
+use std::{error::Error};
 use std::fmt::Debug;
 use std::mem::size_of;
-use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
+use std::net::SocketAddr;
 
 use super::error::AgentError;
 use super::proto::message::Message;
@@ -43,35 +43,38 @@ impl Decoder for MessageCodec {
     }
 }
 
-impl Encoder for MessageCodec {
-    type Item = Message;
+impl Encoder<Message> for MessageCodec {
     type Error = AgentError;
     
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = to_bytes(&to_bytes(&item)?)?;
-        dst.put(bytes);
+        dst.put(bytes.as_slice());
         Ok(())
     }
 }
 
 macro_rules! handle_clients {
-    ($self:ident, $socket:ident) => {{
-        info!("Listening; socket = {:?}", $socket);
-        let arc_self = Arc::new($self);
-        $socket.incoming()
-            .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
-            .for_each(move |socket| {
-                let (write, read) = Framed::new(socket, MessageCodec).split();
-                let arc_self = arc_self.clone();
-                let connection = write.send_all(read.and_then(move |message| {
-                    arc_self.handle_async(message).map_err(|e| {
-                        error!("Error handling message; error = {:?}", e);
-                        AgentError::User
-                    })
-                })).map(|_| ())
-                   .map_err(|e| error!("Error while handling message; error = {:?}", e));
-                tokio::spawn(connection)
-            }).map_err(|e| e.into())
+    ($arc_self:ident, $listener:ident) => {{
+        loop {
+            let (socket, socket_addr) = $listener.accept().await?;
+            let arc_self = $arc_self.clone();
+            tokio::spawn(async move {
+                info!("New connection; addr = {:?}", socket_addr);
+                let (mut sink, mut stream) = Framed::new(socket, MessageCodec).split();
+                while let Some(message_result) = stream.next().await {
+                    if let Ok(message) = message_result {
+                        let result = arc_self.handle_async(message).await;
+                        if let Ok(result) = result {
+                            let _ = sink.send(result).await;
+                        } else if let Err(e) = result {
+                            error!("Error while handling message; error = {:?}", e);
+                        }
+                    } else if let Err(e) = message_result {
+                        error!("Error while decoding message; error = {:?}", e);
+                    }
+                }
+            });
+        }
     }};
 }
 
@@ -83,17 +86,25 @@ pub trait Agent: 'static + Sync + Send + Sized {
     fn handle_async(
         &self,
         message: Message
-    ) -> Box<dyn Future<Item = Message, Error = Self::Error> + Send + Sync> {
-        Box::new(FutureResult::from(self.handle(message)))
+    ) -> Box<dyn Future<Output = Result<Message, Self::Error>> + Send + Sync + Unpin> {
+        Box::new(futures::future::ready(self.handle(message)))
     }
     
     fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let socket = UnixListener::bind(path)?;
-        Ok(tokio::run(handle_clients!(self, socket)))
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build()?;
+        let arc_self = Arc::new(self);
+        runtime.block_on(async {
+            let listener = UnixListener::bind(path)?;
+            handle_clients!(arc_self, listener);
+        })
     }
 
     fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
-        Ok(tokio::run(handle_clients!(self, socket)))
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build()?;
+        let arc_self = Arc::new(self);
+        runtime.block_on(async {
+            let listener = TcpListener::bind(&addr.parse::<SocketAddr>()?).await?;
+            handle_clients!(arc_self, listener);
+        })
     }
 }
