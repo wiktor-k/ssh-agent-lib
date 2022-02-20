@@ -28,16 +28,32 @@ pub struct EcDsaPublicKey {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub struct SkEcDsaPublicKey {
+    pub identifier: String,
+    pub q: MpInt,
+    pub application: String,
+}
+
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Ed25519PublicKey {
     pub enc_a: Vec<u8>
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub struct SkEd25519PublicKey {
+    pub enc_a: Vec<u8>,
+    pub application: String,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PublicKey {
     Dss(DssPublicKey),
     Ed25519(Ed25519PublicKey),
+    SkEd25519(SkEd25519PublicKey),
     Rsa(RsaPublicKey),
-    EcDsa(EcDsaPublicKey)
+    EcDsa(EcDsaPublicKey),
+    SkEcDsa(SkEcDsaPublicKey),
 }
 
 impl KeyType for RsaPublicKey {
@@ -57,6 +73,18 @@ impl KeyType for EcDsaPublicKey {
     
     fn key_type(&self) -> String {
         format!("{}-{}", Self::KEY_TYPE, self.identifier)
+    }
+}
+
+impl KeyType for SkEd25519PublicKey {
+    const KEY_TYPE: &'static str = "sk-ssh-ed25519@openssh.com";
+}
+
+impl KeyType for SkEcDsaPublicKey {
+    const KEY_TYPE: &'static str = "sk-ecdsa-sha2";
+    
+    fn key_type(&self) -> String {
+        format!("{}-{}@openssh.com", Self::KEY_TYPE, self.identifier)
     }
 }
 
@@ -143,7 +171,9 @@ impl_key_type_enum_ser_de!(
     (PublicKey::Dss, DssPublicKey),
     (PublicKey::Rsa, RsaPublicKey),
     (PublicKey::EcDsa, EcDsaPublicKey),
-    (PublicKey::Ed25519, Ed25519PublicKey)
+    (PublicKey::SkEcDsa, SkEcDsaPublicKey),
+    (PublicKey::Ed25519, Ed25519PublicKey),
+    (PublicKey::SkEd25519, SkEd25519PublicKey)
 );
 
 
