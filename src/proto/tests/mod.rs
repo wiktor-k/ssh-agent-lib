@@ -1,7 +1,7 @@
 use super::{to_bytes, from_bytes, Blob};
 use super::public_key::*;
 use super::private_key::*;
-use super::message::{Message, SignRequest, Identity};
+use super::message::{Message, SignRequest, Identity, Extension};
 use super::signature::Signature;
 
 #[test]
@@ -162,4 +162,11 @@ fn raw_protocol_test() {
     let response_bytes = to_bytes(&to_bytes(&response).unwrap()).unwrap();
     
     assert_eq!(response_bytes.as_slice(), &include_bytes!("id_ans_response.bin")[..]);
+}
+
+#[test]
+fn test_extension() {
+    let extension_bytes: &[u8] = &[0, 0, 0, 24, 115, 101, 115, 115, 105, 111, 110, 45, 98, 105, 110, 100, 64, 111, 112, 101, 110, 115, 115, 104, 46, 99, 111, 109, 0, 0, 0, 51, 0, 0, 0, 11, 115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, 0, 0, 0, 32, 177, 185, 198, 92, 165, 45, 127, 95, 202, 195, 226, 63, 6, 115, 10, 104, 18, 137, 172, 240, 153, 154, 174, 74, 83, 7, 1, 204, 14, 177, 153, 40, 0, 0, 0, 32, 175, 96, 42, 133, 218, 171, 58, 220, 97, 78, 155, 114, 20, 67, 90, 133, 24, 185, 156, 71, 128, 163, 234, 195, 202, 15, 160, 177, 130, 229, 114, 164, 0, 0, 0, 83, 0, 0, 0, 11, 115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, 0, 0, 0, 64, 4, 235, 93, 135, 144, 110, 220, 24, 17, 150, 40, 11, 143, 37, 207, 58, 215, 159, 23, 233, 95, 218, 115, 22, 205, 101, 55, 159, 146, 42, 121, 190, 229, 82, 75, 174, 143, 199, 121, 141, 52, 155, 73, 215, 119, 220, 104, 241, 116, 83, 96, 129, 184, 12, 93, 93, 33, 243, 171, 236, 201, 123, 17, 1, 0];
+    let extension: Extension = from_bytes(&extension_bytes).unwrap();
+    assert_eq!(extension.extension_type, "session-bind@openssh.com");
 }

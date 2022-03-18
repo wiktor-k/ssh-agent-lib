@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde::de::{Deserializer, Visitor};
 
 use super::private_key::PrivateKey;
 
@@ -52,8 +53,42 @@ pub struct AddSmartcardKeyConstrained {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Extension {
-    extension_type: String,
-    extension_contents: Vec<u8>
+    pub extension_type: String,
+    pub extension_contents: ExtensionContents,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExtensionContents(pub Vec<u8>);
+
+impl Serialize for ExtensionContents {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        serializer.serialize_bytes(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for ExtensionContents {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ContentsVisitor;
+
+        impl<'de> Visitor<'de> for ContentsVisitor {
+            type Value = ExtensionContents;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("raw bytes buffer")
+            }
+
+            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E> {
+                Ok(ExtensionContents(v))
+            }
+        }
+
+        deserializer.deserialize_any(ContentsVisitor)
+    }
 }
 
 pub type Passphrase = String;

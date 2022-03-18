@@ -49,8 +49,10 @@ pub fn from_bytes<'a, T: Deserialize<'a>>(bytes: &[u8]) -> ProtoResult<T> {
 impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = ProtoError;
 
-    fn deserialize_any<V: Visitor<'de>>(self, _visitor: V) -> ProtoResult<V::Value> {
-        unimplemented!()
+    fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> ProtoResult<V::Value> {
+        let mut bytes = vec![];
+        self.reader.read_to_end(&mut bytes)?;
+        visitor.visit_byte_buf(bytes)
     }
 
     fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> ProtoResult<V::Value> {
