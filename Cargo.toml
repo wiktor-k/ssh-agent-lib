@@ -26,6 +26,7 @@ tokio = { version = "0.1.15", optional = true }
 tokio-uds = { version = "0.2.5", optional = true }
 
 [features]
+default = ["agent"]
 agent = ["futures", "log", "tokio", "tokio-uds", "bytes"]
 
 [[example]]
