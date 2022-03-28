@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
-use serde::de::{Deserializer, Error};
-use serde::ser::{Serializer, SerializeTuple};
 use super::error::ProtoError;
 use super::key_type::{KeyType, KeyTypeEnum};
+use serde::de::{Deserializer, Error};
+use serde::ser::{SerializeTuple, Serializer};
+use serde::{Deserialize, Serialize};
 
 pub type MpInt = Vec<u8>;
 
@@ -12,13 +12,13 @@ pub struct DssPrivateKey {
     pub q: MpInt,
     pub g: MpInt,
     pub y: MpInt,
-    pub x: MpInt
+    pub x: MpInt,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Ed25519PrivateKey {
     pub enc_a: Vec<u8>,
-    pub k_enc_a: Vec<u8>
+    pub k_enc_a: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ pub struct SkEd25519PrivateKey {
     pub application: String,
     pub flags: u8,
     pub key_handle: Vec<u8>,
-    pub reserved: Vec<u8>
+    pub reserved: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -37,14 +37,14 @@ pub struct RsaPrivateKey {
     pub d: MpInt,
     pub iqmp: MpInt,
     pub p: MpInt,
-    pub q: MpInt
+    pub q: MpInt,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct EcDsaPrivateKey {
     pub identifier: String,
     pub q: MpInt,
-    pub d: MpInt
+    pub d: MpInt,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -54,7 +54,7 @@ pub struct SkEcDsaPrivateKey {
     pub application: String,
     pub flags: u8,
     pub key_handle: Vec<u8>,
-    pub reserved: Vec<u8>
+    pub reserved: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -64,7 +64,7 @@ pub enum PrivateKey {
     SkEd25519(SkEd25519PrivateKey),
     Rsa(RsaPrivateKey),
     EcDsa(EcDsaPrivateKey),
-    SkEcDsa(SkEcDsaPrivateKey)
+    SkEcDsa(SkEcDsaPrivateKey),
 }
 
 impl KeyType for RsaPrivateKey {
@@ -85,7 +85,7 @@ impl KeyType for SkEd25519PrivateKey {
 
 impl KeyType for EcDsaPrivateKey {
     const KEY_TYPE: &'static str = "ecdsa-sha2";
-    
+
     fn key_type(&self) -> String {
         format!("{}-{}", Self::KEY_TYPE, self.identifier)
     }

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use serde::de::{Deserializer, Visitor};
+use serde::{Deserialize, Serialize};
 
 use super::private_key::PrivateKey;
 
@@ -13,42 +13,42 @@ pub struct Identity {
 pub struct SignRequest {
     pub pubkey_blob: Vec<u8>,
     pub data: Vec<u8>,
-    pub flags: u32
+    pub flags: u32,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentity {
     pub privkey: PrivateKey,
-    pub comment: String
+    pub comment: String,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddIdentityConstrained {
     pub identity: AddIdentity,
-    pub constraints: Vec<KeyConstraint>
+    pub constraints: Vec<KeyConstraint>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct RemoveIdentity {
-    pub pubkey_blob: Vec<u8>
+    pub pubkey_blob: Vec<u8>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SmartcardKey {
     pub id: String,
-    pub pin: String
+    pub pin: String,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct KeyConstraint {
     pub constraint_type: u8,
-    pub constraint_data: Vec<u8>
+    pub constraint_data: Vec<u8>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AddSmartcardKeyConstrained {
     pub key: SmartcardKey,
-    pub constraints: Vec<KeyConstraint>
+    pub constraints: Vec<KeyConstraint>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -63,7 +63,8 @@ pub struct ExtensionContents(pub Vec<u8>);
 impl Serialize for ExtensionContents {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         serializer.serialize_bytes(&self.0)
     }
 }

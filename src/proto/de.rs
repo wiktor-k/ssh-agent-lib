@@ -2,8 +2,8 @@ use byteorder::{BigEndian, ReadBytesExt};
 use std::io;
 
 use serde::de::{
-    self, Deserialize, DeserializeSeed, EnumAccess, IntoDeserializer, 
-    SeqAccess, VariantAccess, Visitor,
+    self, Deserialize, DeserializeSeed, EnumAccess, IntoDeserializer, SeqAccess, VariantAccess,
+    Visitor,
 };
 
 use super::error::{ProtoError, ProtoResult};
@@ -15,15 +15,13 @@ pub struct Deserializer<R: io::Read> {
 
 impl<R: io::Read> Deserializer<R> {
     pub fn from_reader(reader: R) -> Self {
-        Deserializer {
-            reader: reader
-        }
+        Deserializer { reader: reader }
     }
-    
+
     pub fn to_reader(self) -> R {
         self.reader
     }
-    
+
     fn read_buf(&mut self) -> ProtoResult<Vec<u8>> {
         let len = self.reader.read_u32::<BigEndian>()?;
         let mut buf = vec![0; len as usize];
@@ -36,13 +34,14 @@ pub fn from_bytes<'a, T: Deserialize<'a>>(bytes: &[u8]) -> ProtoResult<T> {
     let mut deserializer = Deserializer::from_reader(bytes);
     let result = T::deserialize(&mut deserializer)?;
     let remaining_bytes = deserializer.to_reader();
-    
+
     if remaining_bytes.len() == 0 {
         Ok(result)
     } else {
-        Err(ProtoError::Deserialization(
-            format!("Buffer not depleted. Remaining bytes: {:?}", remaining_bytes)
-        ))
+        Err(ProtoError::Deserialization(format!(
+            "Buffer not depleted. Remaining bytes: {:?}",
+            remaining_bytes
+        )))
     }
 }
 
@@ -134,7 +133,7 @@ impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ) -> ProtoResult<V::Value> {
         unimplemented!()
     }
-    
+
     fn deserialize_newtype_struct<V: Visitor<'de>>(
         self,
         _name: &'static str,
@@ -142,12 +141,12 @@ impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ) -> ProtoResult<V::Value> {
         visitor.visit_newtype_struct(self)
     }
-    
+
     fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> ProtoResult<V::Value> {
         let len = self.reader.read_u32::<BigEndian>()? as usize;
         visitor.visit_seq(BinarySeq::new(len, &mut *self))
     }
-    
+
     fn deserialize_tuple<V: Visitor<'de>>(self, len: usize, visitor: V) -> ProtoResult<V::Value> {
         visitor.visit_seq(BinarySeq::new(len, &mut *self))
     }
@@ -164,7 +163,7 @@ impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     fn deserialize_map<V: Visitor<'de>>(self, _visitor: V) -> ProtoResult<V::Value> {
         unimplemented!()
     }
-    
+
     fn deserialize_struct<V: Visitor<'de>>(
         self,
         _name: &'static str,
@@ -182,11 +181,11 @@ impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ) -> ProtoResult<V::Value> {
         visitor.visit_enum(BinaryEnum::new(&mut *self))
     }
-    
+
     fn deserialize_identifier<V: Visitor<'de>>(self, visitor: V) -> ProtoResult<V::Value> {
         self.deserialize_str(visitor)
     }
-    
+
     fn deserialize_ignored_any<V: Visitor<'de>>(self, visitor: V) -> ProtoResult<V::Value> {
         self.deserialize_any(visitor)
     }
@@ -194,14 +193,14 @@ impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
 struct BinarySeq<'a, R: io::Read> {
     remaining: usize,
-    de: &'a mut Deserializer<R>
+    de: &'a mut Deserializer<R>,
 }
 
 impl<'a, R: io::Read> BinarySeq<'a, R> {
     fn new(remaining: usize, de: &'a mut Deserializer<R>) -> Self {
         BinarySeq {
             remaining: remaining,
-            de: de
+            de: de,
         }
     }
 }
@@ -209,7 +208,10 @@ impl<'a, R: io::Read> BinarySeq<'a, R> {
 impl<'de, 'a, R: io::Read> SeqAccess<'de> for BinarySeq<'a, R> {
     type Error = ProtoError;
 
-    fn next_element_seed<T: DeserializeSeed<'de>>(&mut self, seed: T) -> ProtoResult<Option<T::Value>> {
+    fn next_element_seed<T: DeserializeSeed<'de>>(
+        &mut self,
+        seed: T,
+    ) -> ProtoResult<Option<T::Value>> {
         if self.remaining > 0 {
             self.remaining -= 1;
             seed.deserialize(&mut *self.de).map(Some)
@@ -225,9 +227,7 @@ struct BinaryEnum<'a, R: io::Read> {
 
 impl<'a, R: io::Read> BinaryEnum<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        BinaryEnum {
-            de: de
-        }
+        BinaryEnum { de: de }
     }
 }
 
@@ -251,11 +251,11 @@ impl<'de, 'a, R: io::Read> VariantAccess<'de> for BinaryEnum<'a, R> {
     fn unit_variant(self) -> ProtoResult<()> {
         Ok(())
     }
-    
+
     fn newtype_variant_seed<T: DeserializeSeed<'de>>(self, seed: T) -> ProtoResult<T::Value> {
         seed.deserialize(self.de)
     }
-    
+
     fn tuple_variant<V: Visitor<'de>>(self, _len: usize, visitor: V) -> ProtoResult<V::Value> {
         de::Deserializer::deserialize_seq(self.de, visitor)
     }

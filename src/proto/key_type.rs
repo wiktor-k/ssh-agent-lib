@@ -18,11 +18,11 @@ macro_rules! impl_key_type_enum_ser_de {
                 }
             }
         }
-        
+
         impl Serialize for $class_name {
             fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 let mut serialize_tuple = serializer.serialize_tuple(2)?;
-                
+
                 match self {
                     $(
                         $variant_name(key) => {
@@ -34,11 +34,11 @@ macro_rules! impl_key_type_enum_ser_de {
                 serialize_tuple.end()
             }
         }
-        
+
         impl<'de> Deserialize<'de> for $class_name {
             fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<$class_name, D::Error> {
                 struct KeyVisitor;
-                
+
                 impl<'de> serde::de::Visitor<'de> for KeyVisitor {
                     type Value = $class_name;
 
@@ -53,7 +53,7 @@ macro_rules! impl_key_type_enum_ser_de {
                         let key_type: String = seq.next_element()?
                             .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
                         let key_type_str = key_type.as_str();
-                        
+
                         $(
                             if key_type_str.starts_with(<$variant_class>::KEY_TYPE) {
                                 let key: $variant_class = seq.next_element()?
@@ -61,11 +61,11 @@ macro_rules! impl_key_type_enum_ser_de {
                                 return Ok($variant_name(key))
                             }
                         )*
-                        
+
                         return Err(Error::custom(ProtoError::UnexpectedVariant));
                     }
                 }
-                
+
                 deserializer.deserialize_tuple(2, KeyVisitor)
             }
         }

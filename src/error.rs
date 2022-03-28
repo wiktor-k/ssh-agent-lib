@@ -1,11 +1,11 @@
-use std::io;
 use super::proto::error::ProtoError;
+use std::io;
 
 #[derive(Debug)]
 pub enum AgentError {
     User,
     Proto(ProtoError),
-    IO(io::Error)
+    IO(io::Error),
 }
 
 impl From<ProtoError> for AgentError {

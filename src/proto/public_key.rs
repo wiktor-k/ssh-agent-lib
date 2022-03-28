@@ -1,16 +1,16 @@
-use serde::{Deserialize, Serialize};
-use serde::de::{Deserializer, Error};
-use serde::ser::{Serializer, SerializeTuple};
 use super::error::ProtoError;
-use super::private_key::*;
 use super::key_type::{KeyType, KeyTypeEnum};
+use super::private_key::*;
+use serde::de::{Deserializer, Error};
+use serde::ser::{SerializeTuple, Serializer};
+use serde::{Deserialize, Serialize};
 
 pub type MpInt = Vec<u8>;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct RsaPublicKey {
     pub e: MpInt,
-    pub n: MpInt
+    pub n: MpInt,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -18,13 +18,13 @@ pub struct DssPublicKey {
     pub p: MpInt,
     pub q: MpInt,
     pub g: MpInt,
-    pub y: MpInt
+    pub y: MpInt,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct EcDsaPublicKey {
     pub identifier: String,
-    pub q: MpInt
+    pub q: MpInt,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -36,7 +36,7 @@ pub struct SkEcDsaPublicKey {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Ed25519PublicKey {
-    pub enc_a: Vec<u8>
+    pub enc_a: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -69,7 +69,7 @@ impl KeyType for Ed25519PublicKey {
 
 impl KeyType for EcDsaPublicKey {
     const KEY_TYPE: &'static str = EcDsaPrivateKey::KEY_TYPE;
-    
+
     fn key_type(&self) -> String {
         format!("{}-{}", Self::KEY_TYPE, self.identifier)
     }
@@ -102,10 +102,7 @@ impl From<PrivateKey> for PublicKey {
 
 impl From<RsaPrivateKey> for RsaPublicKey {
     fn from(key: RsaPrivateKey) -> Self {
-        Self {
-            e: key.e,
-            n: key.n
-        }
+        Self { e: key.e, n: key.n }
     }
 }
 
@@ -115,7 +112,7 @@ impl From<DssPrivateKey> for DssPublicKey {
             p: key.p,
             q: key.q,
             g: key.g,
-            y: key.y
+            y: key.y,
         }
     }
 }
@@ -124,7 +121,7 @@ impl From<EcDsaPrivateKey> for EcDsaPublicKey {
     fn from(key: EcDsaPrivateKey) -> Self {
         Self {
             identifier: key.identifier,
-            q: key.q
+            q: key.q,
         }
     }
 }
@@ -134,16 +131,14 @@ impl From<SkEcDsaPrivateKey> for SkEcDsaPublicKey {
         Self {
             identifier: key.identifier,
             q: key.q,
-            application: key.application
+            application: key.application,
         }
     }
 }
 
 impl From<Ed25519PrivateKey> for Ed25519PublicKey {
     fn from(key: Ed25519PrivateKey) -> Self {
-        Self {
-            enc_a: key.enc_a
-        }
+        Self { enc_a: key.enc_a }
     }
 }
 
@@ -151,7 +146,7 @@ impl From<SkEd25519PrivateKey> for SkEd25519PublicKey {
     fn from(key: SkEd25519PrivateKey) -> Self {
         Self {
             enc_a: key.enc_a,
-            application: key.application
+            application: key.application,
         }
     }
 }
@@ -195,5 +190,3 @@ impl_key_type_enum_ser_de!(
     (PublicKey::Ed25519, Ed25519PublicKey),
     (PublicKey::SkEd25519, SkEd25519PublicKey)
 );
-
-

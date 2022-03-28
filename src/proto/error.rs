@@ -1,6 +1,6 @@
-use std::{string, io};
 use std::error::Error;
 use std::fmt::Display;
+use std::{io, string};
 
 #[derive(Debug)]
 pub enum ProtoError {
@@ -9,7 +9,7 @@ pub enum ProtoError {
     StringEncoding(string::FromUtf8Error),
     IO(io::Error),
     Serialization(String),
-    Deserialization(String)
+    Deserialization(String),
 }
 
 impl From<ProtoError> for () {
@@ -50,7 +50,7 @@ impl std::error::Error for ProtoError {
             ProtoError::StringEncoding(e) => Some(e),
             ProtoError::IO(e) => Some(e),
             ProtoError::Serialization(_) => None,
-            ProtoError::Deserialization(_) => None
+            ProtoError::Deserialization(_) => None,
         }
     }
 }
@@ -63,7 +63,7 @@ impl std::fmt::Display for ProtoError {
             ProtoError::StringEncoding(_) => f.write_str("String encoding failed"),
             ProtoError::IO(_) => f.write_str("I/O Error"),
             ProtoError::Serialization(_) => f.write_str("Serialization Error"),
-            ProtoError::Deserialization(_) => f.write_str("Deserialization Error")
+            ProtoError::Deserialization(_) => f.write_str("Deserialization Error"),
         }
     }
 }

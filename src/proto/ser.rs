@@ -1,19 +1,17 @@
+use super::error::{ProtoError, ProtoResult};
 use byteorder::{BigEndian, WriteBytesExt};
 use serde::ser::{self, Serialize};
 use std::io;
-use super::error::{ProtoError, ProtoResult};
 
 #[derive(Debug)]
 pub struct Serializer<W: io::Write> {
     // This string starts empty and JSON is appended as values are serialized.
-    writer: W
+    writer: W,
 }
 
 impl<W: io::Write> Serializer<W> {
     pub fn from_writer(writer: W) -> Self {
-        Self {
-            writer: writer
-        }
+        Self { writer: writer }
     }
 }
 
@@ -28,7 +26,6 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     type SerializeMap = Self;
     type SerializeStruct = Self;
     type SerializeStructVariant = Self;
-
 
     fn serialize_bool(self, _v: bool) -> ProtoResult<()> {
         unimplemented!()
@@ -115,11 +112,7 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
         (variant_index as u8).serialize(self)
     }
 
-    fn serialize_newtype_struct<T>(
-        self,
-        _name: &'static str,
-        value: &T,
-    ) -> ProtoResult<()>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> ProtoResult<()>
     where
         T: ?Sized + Serialize,
     {
@@ -159,7 +152,7 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     ) -> ProtoResult<Self::SerializeTupleStruct> {
         Ok(self)
     }
-    
+
     fn serialize_tuple_variant(
         self,
         _name: &'static str,
@@ -170,11 +163,11 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
         (variant_index as u8).serialize(&mut *self)?;
         Ok(self)
     }
-    
+
     fn serialize_map(self, _len: Option<usize>) -> ProtoResult<Self::SerializeMap> {
         unimplemented!()
     }
-    
+
     fn serialize_struct(
         self,
         _name: &'static str,
@@ -182,7 +175,7 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     ) -> ProtoResult<Self::SerializeStruct> {
         Ok(self)
     }
-    
+
     fn serialize_struct_variant(
         self,
         _name: &'static str,
@@ -197,14 +190,14 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
 impl<'a, W: io::Write> ser::SerializeSeq for &'a mut Serializer<W> {
     type Ok = ();
     type Error = ProtoError;
-    
+
     fn serialize_element<T>(&mut self, value: &T) -> ProtoResult<()>
     where
         T: ?Sized + Serialize,
     {
         value.serialize(&mut **self)
     }
-    
+
     fn end(self) -> ProtoResult<()> {
         Ok(())
     }
@@ -268,7 +261,7 @@ impl<'a, W: io::Write> ser::SerializeMap for &'a mut Serializer<W> {
     {
         unimplemented!()
     }
-    
+
     fn serialize_value<T>(&mut self, _value: &T) -> ProtoResult<()>
     where
         T: ?Sized + Serialize,
@@ -313,10 +306,8 @@ impl<'a, W: io::Write> ser::SerializeStructVariant for &'a mut Serializer<W> {
     }
 }
 
-
 pub fn to_bytes<T: Serialize>(value: &T) -> ProtoResult<Vec<u8>> {
     let mut serializer = Serializer::from_writer(Vec::new());
     value.serialize(&mut serializer)?;
     Ok(serializer.writer)
 }
-
