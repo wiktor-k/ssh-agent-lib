@@ -11,7 +11,7 @@ pub struct Serializer<W: io::Write> {
 
 impl<W: io::Write> Serializer<W> {
     pub fn from_writer(writer: W) -> Self {
-        Self { writer: writer }
+        Self { writer }
     }
 }
 

@@ -13,9 +13,7 @@ pub enum ProtoError {
 }
 
 impl From<ProtoError> for () {
-    fn from(_e: ProtoError) -> () {
-        ()
-    }
+    fn from(_e: ProtoError) {}
 }
 
 impl From<io::Error> for ProtoError {

@@ -145,7 +145,6 @@ fn raw_protocol_test() {
                     pubkey_blob: pubkey.to_blob().unwrap(),
                     comment: identity.comment,
                 });
-                ()
             }
             _ => panic!("Wrong request type: {:?}", request),
         }
@@ -175,6 +174,6 @@ fn test_extension() {
         119, 220, 104, 241, 116, 83, 96, 129, 184, 12, 93, 93, 33, 243, 171, 236, 201, 123, 17, 1,
         0,
     ];
-    let extension: Extension = from_bytes(&extension_bytes).unwrap();
+    let extension: Extension = from_bytes(extension_bytes).unwrap();
     assert_eq!(extension.extension_type, "session-bind@openssh.com");
 }

@@ -32,3 +32,10 @@ jobs:
       - name: Build and test
         run: cargo build --verbose --all && cargo test --verbose --all
        
+  lints:
+    name: Clippy lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check for lints
+        run: cargo clippy -- -D warnings

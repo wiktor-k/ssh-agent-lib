@@ -15,7 +15,7 @@ pub struct Deserializer<R: io::Read> {
 
 impl<R: io::Read> Deserializer<R> {
     pub fn from_reader(reader: R) -> Self {
-        Deserializer { reader: reader }
+        Deserializer { reader }
     }
 
     pub fn to_reader(self) -> R {
@@ -26,7 +26,7 @@ impl<R: io::Read> Deserializer<R> {
         let len = self.reader.read_u32::<BigEndian>()?;
         let mut buf = vec![0; len as usize];
         self.reader.read_exact(&mut buf)?;
-        return Ok(buf);
+        Ok(buf)
     }
 }
 
@@ -35,7 +35,7 @@ pub fn from_bytes<'a, T: Deserialize<'a>>(bytes: &[u8]) -> ProtoResult<T> {
     let result = T::deserialize(&mut deserializer)?;
     let remaining_bytes = deserializer.to_reader();
 
-    if remaining_bytes.len() == 0 {
+    if remaining_bytes.is_empty() {
         Ok(result)
     } else {
         Err(ProtoError::Deserialization(format!(
@@ -198,10 +198,7 @@ struct BinarySeq<'a, R: io::Read> {
 
 impl<'a, R: io::Read> BinarySeq<'a, R> {
     fn new(remaining: usize, de: &'a mut Deserializer<R>) -> Self {
-        BinarySeq {
-            remaining: remaining,
-            de: de,
-        }
+        BinarySeq { remaining, de }
     }
 }
 
@@ -227,7 +224,7 @@ struct BinaryEnum<'a, R: io::Read> {
 
 impl<'a, R: io::Read> BinaryEnum<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        BinaryEnum { de: de }
+        BinaryEnum { de }
     }
 }
 
