@@ -1,4 +1,4 @@
-# ssh-agent.rs
+# ssh-agent-lib
 
 A collection of types for writing custom SSH agents.
 
@@ -11,8 +11,8 @@ This example starts listening on a Unix socket `connect.sock` and
 processes requests.
 
 ```rust,no_run
-use ssh_agent::agent::Agent;
-use ssh_agent::proto::message::{Message, SignRequest};
+use ssh_agent_lib::agent::Agent;
+use ssh_agent_lib::proto::message::{Message, SignRequest};
 
 struct MyAgent;
 

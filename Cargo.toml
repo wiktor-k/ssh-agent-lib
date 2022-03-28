@@ -1,6 +1,6 @@
 [package]
-name = "ssh-agent"
-description = "Library for implementing an SSH agent"
+name = "ssh-agent-lib"
+description = "A collection of types for writing custom SSH agents"
 version = "0.2.3"
 license = "MIT"
 authors = [

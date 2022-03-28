@@ -1,11 +1,11 @@
 use log::info;
 
-use ssh_agent::agent::Agent;
-use ssh_agent::proto::message::{self, Message, SignRequest};
-use ssh_agent::proto::private_key::{PrivateKey, RsaPrivateKey};
-use ssh_agent::proto::public_key::PublicKey;
-use ssh_agent::proto::signature::{self, Signature};
-use ssh_agent::proto::{from_bytes, to_bytes};
+use ssh_agent_lib::agent::Agent;
+use ssh_agent_lib::proto::message::{self, Message, SignRequest};
+use ssh_agent_lib::proto::private_key::{PrivateKey, RsaPrivateKey};
+use ssh_agent_lib::proto::public_key::PublicKey;
+use ssh_agent_lib::proto::signature::{self, Signature};
+use ssh_agent_lib::proto::{from_bytes, to_bytes};
 
 use std::error::Error;
 use std::fs::remove_file;
