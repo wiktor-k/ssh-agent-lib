@@ -91,6 +91,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
         Box::new(FutureResult::from(self.handle(message)))
     }
 
+    #[allow(clippy::unit_arg)]
     fn run_listener(self, socket: UnixListener) -> Result<(), Box<dyn Error + Send + Sync>> {
         Ok(tokio::run(handle_clients!(self, socket)))
     }
@@ -99,6 +100,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
         self.run_listener(UnixListener::bind(path)?)
     }
 
+    #[allow(clippy::unit_arg)]
     fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
         Ok(tokio::run(handle_clients!(self, socket)))
