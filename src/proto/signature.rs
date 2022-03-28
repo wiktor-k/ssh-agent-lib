@@ -16,6 +16,14 @@ pub struct Signature {
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SkSignature {
+    pub algorithm: String,
+    pub blob: Vec<u8>,
+    pub flags: u8,
+    pub counter: u32
+}
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct EcDsaSignature {
     pub identifier: String,
     pub data: EcDsaSignatureData
