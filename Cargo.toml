@@ -12,23 +12,21 @@ repository = "https://github.com/wiktor-k/ssh-agent.rs"
 edition = "2021"
 
 [dependencies]
-byteorder = "1.2.7"
-serde = {version = "1.0.87", features = ["derive"]}
+byteorder = "1.4"
+serde = {version = "1", features = ["derive"]}
 
-bytes = { version = "0.4.11", optional = true }
-futures = { version = "0.1.25", optional = true }
-log = { version = "0.4.6", optional = true }
-tokio = { version = "0.1.15", optional = true }
-tokio-uds = { version = "0.2.5", optional = true }
+bytes = { version = "1.1", optional = true }
+#futures = { version = "0.1.25", optional = true }
+futures = { version = "0.3.21", optional = true }
+log = { version = "0.4.16", optional = true }
+tokio = { version = "1", optional = true, features = ["rt", "net"] }
+tokio-util = { version = "0.7", optional = true, features = ["codec"] }
+#tokio-uds = { version = "0.2.5", optional = true }
 
 [features]
 default = ["agent"]
-agent = ["futures", "log", "tokio", "tokio-uds", "bytes"]
+agent = ["log", "tokio", "tokio-util", "bytes", "futures"]
 
 [[example]]
 name = "key_storage"
 required-features = ["agent"]
-
-[dev-dependencies]
-env_logger = "0.6.0"
-openssl = "0.10.16"

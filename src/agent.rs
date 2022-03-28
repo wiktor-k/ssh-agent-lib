@@ -1,18 +1,24 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use bytes::{BufMut, BytesMut};
-use futures::future::FutureResult;
+use bytes::BytesMut;
 use log::{error, info};
-use tokio::codec::{Decoder, Encoder, Framed};
 use tokio::net::TcpListener;
-use tokio::prelude::*;
-use tokio_uds::UnixListener;
+use tokio::net::UnixListener;
+use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use std::error::Error;
 use std::fmt::Debug;
+use std::future::Future;
 use std::mem::size_of;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
+
+use bytes::Buf;
+use bytes::BufMut;
+use futures::SinkExt;
+use futures::StreamExt;
+use futures::TryFutureExt;
+use futures::TryStreamExt;
 
 use super::error::AgentError;
 use super::proto::message::Message;
@@ -24,7 +30,7 @@ impl Decoder for MessageCodec {
     type Item = Message;
     type Error = AgentError;
 
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Message>, Self::Error> {
         let mut bytes = &src[..];
 
         if bytes.len() < size_of::<u32>() {
@@ -43,11 +49,10 @@ impl Decoder for MessageCodec {
     }
 }
 
-impl Encoder for MessageCodec {
-    type Item = Message;
+impl Encoder<Message> for MessageCodec {
     type Error = AgentError;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = to_bytes(&to_bytes(&item)?)?;
         dst.put(bytes);
         Ok(())
@@ -56,6 +61,8 @@ impl Encoder for MessageCodec {
 
 macro_rules! handle_clients {
     ($self:ident, $socket:ident) => {{
+        use futures::FutureExt;
+        use futures::TryFutureExt;
         info!("Listening; socket = {:?}", $socket);
         let arc_self = Arc::new($self);
         $socket
@@ -87,13 +94,15 @@ pub trait Agent: 'static + Sync + Send + Sized {
     fn handle_async(
         &self,
         message: Message,
-    ) -> Box<dyn Future<Item = Message, Error = Self::Error> + Send + Sync> {
-        Box::new(FutureResult::from(self.handle(message)))
+    ) -> Box<dyn Future<Output = Result<Message, Self::Error>> + Send + Sync> {
+        Box::new(self.handle(message))
     }
 
     #[allow(clippy::unit_arg)]
     fn run_listener(self, socket: UnixListener) -> Result<(), Box<dyn Error + Send + Sync>> {
-        Ok(tokio::run(handle_clients!(self, socket)))
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(handle_clients!(self, socket));
+        Ok(res)
     }
 
     fn run_unix(self, path: impl AsRef<Path>) -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -103,6 +112,8 @@ pub trait Agent: 'static + Sync + Send + Sized {
     #[allow(clippy::unit_arg)]
     fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
-        Ok(tokio::run(handle_clients!(self, socket)))
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(handle_clients!(self, socket));
+        Ok(res)
     }
 }
