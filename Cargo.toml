@@ -11,10 +11,6 @@ repository = "https://github.com/sekey/ssh-agent.rs"
 readme = "README.md"
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "sekey/ssh-agent.rs" }
-codecov = { repository = "sekey/ssh-agent.rs" }
-
 [dependencies]
 byteorder = "1.2.7"
 serde = {version = "1.0.87", features = ["derive"]}
