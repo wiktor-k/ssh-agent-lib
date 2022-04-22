@@ -14,7 +14,7 @@ edition = "2021"
 [dependencies]
 byteorder = "1.2.7"
 serde = {version = "1.0.87", features = ["derive"]}
-
+service-binding = "0.1.1"
 bytes = { version = "0.4.11", optional = true }
 futures = { version = "0.1.25", optional = true }
 log = { version = "0.4.6", optional = true }

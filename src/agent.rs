@@ -105,4 +105,22 @@ pub trait Agent: 'static + Sync + Send + Sized {
         let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
         Ok(tokio::run(handle_clients!(self, socket)))
     }
+
+    #[allow(clippy::unit_arg)]
+    fn listen<T>(self, socket: T) -> Result<(), Box<dyn Error + Send + Sync>>
+    where
+        T: Into<service_binding::Listener>,
+    {
+        let socket = socket.into();
+        match socket {
+            service_binding::Listener::Unix(listener) => {
+                let listener = UnixListener::from_std(listener, &Default::default())?;
+                Ok(tokio::run(handle_clients!(self, listener)))
+            }
+            service_binding::Listener::Tcp(listener) => {
+                let listener = TcpListener::from_std(listener, &Default::default())?;
+                Ok(tokio::run(handle_clients!(self, listener)))
+            }
+        }
+    }
 }
