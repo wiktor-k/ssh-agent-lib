@@ -107,11 +107,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
     }
 
     #[allow(clippy::unit_arg)]
-    fn listen<T>(self, socket: T) -> Result<(), Box<dyn Error + Send + Sync>>
-    where
-        T: Into<service_binding::Listener>,
-    {
-        let socket = socket.into();
+    fn listen(self, socket: service_binding::Listener) -> Result<(), Box<dyn Error + Send + Sync>> {
         match socket {
             service_binding::Listener::Unix(listener) => {
                 let listener = UnixListener::from_std(listener, &Default::default())?;
