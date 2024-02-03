@@ -1,5 +1,7 @@
-use serde::de::{Deserializer, Visitor};
+use byteorder::{BigEndian, ReadBytesExt};
+use serde::de::{Deserializer, Error, Visitor};
 use serde::{Deserialize, Serialize};
+use std::mem;
 
 use super::private_key::PrivateKey;
 
@@ -83,8 +85,21 @@ impl<'de> Deserialize<'de> for ExtensionContents {
                 formatter.write_str("raw bytes buffer")
             }
 
-            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E> {
-                Ok(ExtensionContents(v))
+            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                let mut bytes = &v[..];
+
+                let length = bytes
+                    .read_u32::<BigEndian>()
+                    .map_err(|_| E::custom("Misformatted extension content"))?
+                    as usize;
+                if bytes.len() != length {
+                    return Err(E::custom("Extension content too short"));
+                }
+
+                Ok(ExtensionContents(bytes.to_vec()))
             }
         }
 
