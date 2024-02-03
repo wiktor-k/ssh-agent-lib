@@ -76,11 +76,11 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     }
 
     fn serialize_str(self, v: &str) -> ProtoResult<()> {
+        (v.len() as u32).serialize(&mut *self)?;
         self.serialize_bytes(v.as_bytes())
     }
 
     fn serialize_bytes(self, v: &[u8]) -> ProtoResult<()> {
-        (v.len() as u32).serialize(&mut *self)?;
         self.writer.write_all(v).map_err(Into::into)
     }
 
