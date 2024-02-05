@@ -1,10 +1,9 @@
 use super::error::ProtoError;
 use super::key_type::{KeyType, KeyTypeEnum};
+use super::MpInt;
 use serde::de::{Deserializer, Error};
 use serde::ser::{SerializeTuple, Serializer};
 use serde::{Deserialize, Serialize};
-
-pub type MpInt = Vec<u8>;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct DssPrivateKey {

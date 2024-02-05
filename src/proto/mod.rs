@@ -24,6 +24,8 @@ pub use self::signature::*;
 
 use serde::{Deserialize, Serialize};
 
+pub type MpInt = Vec<u8>;
+
 pub trait Blob: Sized {
     fn to_blob(&self) -> ProtoResult<Vec<u8>>;
     fn from_blob(blob: &[u8]) -> ProtoResult<Self>;
