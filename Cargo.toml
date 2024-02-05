@@ -19,13 +19,14 @@ bytes = { version = "1.1", optional = true }
 #futures = { version = "0.1.25", optional = true }
 futures = { version = "0.3.21", optional = true }
 log = { version = "0.4.16", optional = true }
-tokio = { version = "1", optional = true, features = ["rt", "net"] }
+tokio = { version = "1", optional = true, features = ["rt", "net", "rt-multi-thread"] }
 tokio-util = { version = "0.7", optional = true, features = ["codec"] }
+tokio-stream = { version = "0.1.14", optional = true, features = ["net"] }
 #tokio-uds = { version = "0.2.5", optional = true }
 
 [features]
 default = ["agent"]
-agent = ["log", "tokio", "tokio-util", "bytes", "futures"]
+agent = ["log", "tokio", "tokio-util", "bytes", "futures", "tokio-stream"]
 
 [[example]]
 name = "key_storage"

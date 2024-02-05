@@ -54,21 +54,21 @@ impl Encoder<Message> for MessageCodec {
 
     fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = to_bytes(&to_bytes(&item)?)?;
-        dst.put(bytes);
+        dst.put(&bytes[..]);
         Ok(())
     }
 }
 
 macro_rules! handle_clients {
-    ($self:ident, $socket:ident) => {{
+    ($self:ident, $wrapper:ident, $socket:ident) => {{
         use futures::FutureExt;
         use futures::TryFutureExt;
         info!("Listening; socket = {:?}", $socket);
         let arc_self = Arc::new($self);
-        $socket
-            .incoming()
+        tokio_stream::wrappers::$wrapper::new($socket)
             .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
+                let socket = socket.unwrap(); //FIXME
                 let (write, read) = Framed::new(socket, MessageCodec).split();
                 let arc_self = arc_self.clone();
                 let connection = write
@@ -95,13 +95,13 @@ pub trait Agent: 'static + Sync + Send + Sized {
         &self,
         message: Message,
     ) -> Box<dyn Future<Output = Result<Message, Self::Error>> + Send + Sync> {
-        Box::new(self.handle(message))
+        Box::new(async { self.handle(message) })
     }
 
     #[allow(clippy::unit_arg)]
     fn run_listener(self, socket: UnixListener) -> Result<(), Box<dyn Error + Send + Sync>> {
         let mut rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(handle_clients!(self, socket));
+        let res = rt.block_on(handle_clients!(self, UnixListenerStream, socket));
         Ok(res)
     }
 
@@ -111,9 +111,11 @@ pub trait Agent: 'static + Sync + Send + Sized {
 
     #[allow(clippy::unit_arg)]
     fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?)?;
         let mut rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(handle_clients!(self, socket));
+        let res = rt.block_on(async {
+            let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?).await?;
+            handle_clients!(self, TcpListenerStream, socket)
+        });
         Ok(res)
     }
 }
