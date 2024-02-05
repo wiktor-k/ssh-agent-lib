@@ -176,4 +176,6 @@ fn test_extension() {
     ];
     let extension: Extension = from_bytes(extension_bytes).unwrap();
     assert_eq!(extension.extension_type, "session-bind@openssh.com");
+    let out = to_bytes(&extension).unwrap();
+    assert_eq!(extension_bytes, out);
 }
