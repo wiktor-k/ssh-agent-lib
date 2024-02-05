@@ -69,20 +69,21 @@ macro_rules! handle_clients {
             .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
                 let socket = socket.unwrap(); //FIXME
-                let (write, read) = Framed::new(socket, MessageCodec).split();
+                let (mut write, read) = Framed::new(socket, MessageCodec).split();
                 let arc_self = arc_self.clone();
                 let connection = write
-                    .send_all(read.and_then(move |message| {
-                        arc_self.handle_async(message).map_err(|e| {
+                    .send_all(&mut std::pin::pin!(read.and_then(move |message| {
+                        arc_self.handle_async(message).map_err(move |e| {
                             error!("Error handling message; error = {:?}", e);
                             AgentError::User
                         })
-                    }))
+                    })))
                     .map(|_| ())
-                    .map_err(|e| error!("Error while handling message; error = {:?}", e));
-                tokio::spawn(connection)
-            })
-            .map_err(|e| e.into())
+                    ;//.map_err(|e| error!("Error while handling message; error = {:?}", e));
+                tokio::task::spawn(async { connection.await; })
+        //async { tokio::task::spawn_local(connection); }
+             })
+        //.map_err(|e| e.into())
     }};
 }
 
@@ -91,11 +92,8 @@ pub trait Agent: 'static + Sync + Send + Sized {
 
     fn handle(&self, message: Message) -> Result<Message, Self::Error>;
 
-    fn handle_async(
-        &self,
-        message: Message,
-    ) -> Box<dyn Future<Output = Result<Message, Self::Error>> + Send + Sync> {
-        Box::new(async { self.handle(message) })
+    async fn handle_async(&self, message: Message) -> Result<Message, Self::Error> {
+        self.handle(message)
     }
 
     #[allow(clippy::unit_arg)]
@@ -113,8 +111,10 @@ pub trait Agent: 'static + Sync + Send + Sized {
     fn run_tcp(self, addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let mut rt = tokio::runtime::Runtime::new().unwrap();
         let res = rt.block_on(async {
-            let socket = TcpListener::bind(&addr.parse::<SocketAddr>()?).await?;
-            handle_clients!(self, TcpListenerStream, socket)
+            let socket = TcpListener::bind(&addr.parse::<SocketAddr>().unwrap())
+                .await
+                .unwrap(); // FIXMEx2
+            handle_clients!(self, TcpListenerStream, socket);
         });
         Ok(res)
     }
