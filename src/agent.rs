@@ -11,7 +11,7 @@ use std::future::Future;
 use std::mem::size_of;
 use std::net::SocketAddr;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use bytes::Buf;
 use bytes::BufMut;
@@ -64,25 +64,25 @@ macro_rules! handle_clients {
         use futures::FutureExt;
         use futures::TryFutureExt;
         info!("Listening; socket = {:?}", $socket);
-        let arc_self = Arc::new($self);
+        let arc_self = Arc::new(Mutex::new($self));
         tokio_stream::wrappers::$wrapper::new($socket)
             .map_err(|e| error!("Failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
                 let socket = socket.unwrap(); //FIXME
                 let (mut write, read) = Framed::new(socket, MessageCodec).split();
-                let arc_self = arc_self.clone();
-                let connection = write
-                    .send_all(&mut std::pin::pin!(read.and_then(move |message| {
-                        arc_self.handle_async(message).map_err(move |e| {
-                            error!("Error handling message; error = {:?}", e);
-                            AgentError::User
-                        })
-                    })))
-                    .map(|_| ())
-                    ;//.map_err(|e| error!("Error while handling message; error = {:?}", e));
-                tokio::task::spawn(async { connection.await; })
-        //async { tokio::task::spawn_local(connection); }
-             })
+                let arc_self = Arc::clone(&arc_self);
+                let arc_self = arc_self.lock().unwrap();
+                let connection = write.send_all(&mut std::pin::pin!(read.and_then(|message| {
+                    arc_self.handle_async(message).map_err(move |e| {
+                        error!("Error handling message; error = {:?}", e);
+                        AgentError::User
+                    })
+                })));
+                //.map(move |_| ())
+                //.map_err(|e| error!("Error while handling message; error = {:?}", e));
+                tokio::task::spawn_local(connection).map(move |_| ())
+                //async { tokio::task::spawn_local(connection); }
+            })
         //.map_err(|e| e.into())
     }};
 }
