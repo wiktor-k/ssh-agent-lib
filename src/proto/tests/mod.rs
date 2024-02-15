@@ -1,3 +1,4 @@
+use super::extension::SessionBind;
 use super::message::{Extension, Identity, Message, SignRequest};
 use super::private_key::*;
 use super::public_key::*;
@@ -178,4 +179,9 @@ fn test_extension() {
     assert_eq!(extension.extension_type, "session-bind@openssh.com");
     let out = to_bytes(&extension).unwrap();
     assert_eq!(extension_bytes, out);
+
+    let session_bind: SessionBind = from_bytes(&extension.extension_contents.0).unwrap();
+
+    let out = to_bytes(&session_bind).unwrap();
+    assert_eq!(extension.extension_contents.0, out);
 }

@@ -1,4 +1,5 @@
 use serde::de::{Deserializer, Visitor};
+use serde::ser::SerializeTuple;
 use serde::{Deserialize, Serialize};
 
 use super::private_key::PrivateKey;
@@ -65,7 +66,11 @@ impl Serialize for ExtensionContents {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_bytes(&self.0)
+        let mut seq = serializer.serialize_tuple(self.0.len())?;
+        for i in &self.0 {
+            seq.serialize_element(i)?;
+        }
+        seq.end()
     }
 }
 
