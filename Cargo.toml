@@ -1,7 +1,7 @@
 [package]
 name = "ssh-agent-lib"
 description = "A collection of types for writing custom SSH agents"
-version = "0.2.7"
+version = "0.3.0-pre"
 license = "MIT"
 authors = [
     "Nicolas Trippar <ntrippar@gmail.com>",
@@ -12,23 +12,25 @@ repository = "https://github.com/wiktor-k/ssh-agent.rs"
 edition = "2021"
 
 [dependencies]
-byteorder = "1.2.7"
-serde = {version = "1.0.87", features = ["derive"]}
-service-binding = "^0.3.0"
-bytes = { version = "0.4.11", optional = true }
-futures = { version = "0.1.25", optional = true }
+byteorder = "1.4.3"
+serde = {version = "1", features = ["derive"]}
+
+async-trait = { version = "0.1.77", optional = true }
+bytes = { version = "1.5.0", optional = true }
+futures = { version = "0.3.30", optional = true }
 log = { version = "0.4.6", optional = true }
-tokio = { version = "0.1.15", optional = true }
-tokio-uds = { version = "0.2.5", optional = true }
+tokio = { version = "1", optional = true, features = ["rt", "net"] }
+tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
 
 [features]
 default = ["agent"]
-agent = ["futures", "log", "tokio", "tokio-uds", "bytes"]
+agent = ["futures", "log", "tokio", "tokio-util", "bytes", "async-trait"]
 
 [[example]]
 name = "key_storage"
 required-features = ["agent"]
 
 [dev-dependencies]
-env_logger = "0.6.0"
+env_logger = "0.11.0"
 openssl = "0.10.16"
+tokio = { version = "1", features = ["macros"] }

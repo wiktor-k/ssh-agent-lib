@@ -11,15 +11,19 @@ This example starts listening on a Unix socket `connect.sock` and
 processes requests.
 
 ```rust,no_run
+use async_trait::async_trait;
+use tokio::net::UnixListener;
+
 use ssh_agent_lib::agent::Agent;
 use ssh_agent_lib::proto::message::{Message, SignRequest};
 
 struct MyAgent;
 
+#[async_trait]
 impl Agent for MyAgent {
     type Error = ();
 
-    fn handle(&self, message: Message) -> Result<Message, ()> {
+    async fn handle(&self, message: Message) -> Result<Message, ()> {
         match message {
             Message::SignRequest(request) => {
                 // get the signature by signing `request.data`
@@ -31,12 +35,14 @@ impl Agent for MyAgent {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let agent = MyAgent;
     let socket = "connect.sock";
     let _ = std::fs::remove_file(socket);
+    let socket = UnixListener::bind(socket)?;
 
-    agent.run_unix(socket)?;
+    agent.listen(socket).await?;
     Ok(())
 }
 ```
