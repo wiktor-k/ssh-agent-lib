@@ -2,8 +2,12 @@ use super::extension::SessionBind;
 use super::message::{Extension, Identity, Message, SignRequest};
 use super::private_key::*;
 use super::public_key::*;
-use super::signature::Signature;
 use super::{from_bytes, to_bytes, Blob};
+use ssh_key::private::Ed25519PrivateKey;
+use ssh_key::public::RsaPublicKey;
+use ssh_key::PrivateKey;
+use ssh_key::PublicKey;
+use ssh_key::Signature;
 
 #[test]
 fn pubkey_blob_serialization() {

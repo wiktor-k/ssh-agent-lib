@@ -3,6 +3,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use bytes::{Buf, BufMut, BytesMut};
 use futures::{SinkExt, TryStreamExt};
 use log::{error, info};
+use ssh_encoding::{Decode, Encode};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio_util::codec::{Decoder, Encoder, Framed};
@@ -14,7 +15,6 @@ use std::mem::size_of;
 
 use super::error::AgentError;
 use super::proto::message::Message;
-use super::proto::{from_bytes, to_bytes};
 
 #[derive(Debug)]
 pub struct MessageCodec;
@@ -36,7 +36,7 @@ impl Decoder for MessageCodec {
             return Ok(None);
         }
 
-        let message: Message = from_bytes(bytes)?;
+        let message: Message = Message::decode(&mut bytes)?;
         src.advance(size_of::<u32>() + length);
         Ok(Some(message))
     }
@@ -46,7 +46,13 @@ impl Encoder<Message> for MessageCodec {
     type Error = AgentError;
 
     fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let bytes = to_bytes(&to_bytes(&item)?)?;
+        let mut bytes = Vec::new();
+
+        let len = item.encoded_len().unwrap() as u32;
+        len.encode(&mut bytes)?;
+
+        item.encode(&mut bytes)?;
+
         dst.put(&*bytes);
         Ok(())
     }

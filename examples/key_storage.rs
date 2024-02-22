@@ -5,10 +5,12 @@ use tokio::net::UnixListener;
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
-use ssh_agent_lib::proto::private_key::{PrivateKey, RsaPrivateKey};
-use ssh_agent_lib::proto::public_key::PublicKey;
-use ssh_agent_lib::proto::signature::{self, Signature};
-use ssh_agent_lib::proto::{from_bytes, to_bytes};
+use ssh_agent_lib::proto::signature::{self};
+use ssh_key::{
+    private::{KeypairData, PrivateKey, RsaKeypair},
+    public::PublicKey,
+    Algorithm, HashAlg, Signature,
+};
 
 use std::error::Error;
 use std::fs::remove_file;
@@ -74,22 +76,26 @@ impl KeyStorage {
     }
 
     fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<dyn Error>> {
-        let pubkey: PublicKey = from_bytes(&sign_request.pubkey_blob)?;
+        let pubkey: PublicKey = sign_request.pubkey.clone().try_into()?;
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
-            match identity.privkey {
-                PrivateKey::Rsa(ref key) => {
+            match identity.privkey.key_data() {
+                KeypairData::Rsa(ref key) => {
                     let algorithm;
                     let digest;
 
                     if sign_request.flags & signature::RSA_SHA2_512 != 0 {
-                        algorithm = "rsa-sha2-512";
+                        algorithm = Algorithm::Rsa {
+                            hash: Some(HashAlg::Sha512),
+                        };
                         digest = MessageDigest::sha512();
                     } else if sign_request.flags & signature::RSA_SHA2_256 != 0 {
-                        algorithm = "rsa-sha2-256";
+                        algorithm = Algorithm::Rsa {
+                            hash: Some(HashAlg::Sha256),
+                        };
                         digest = MessageDigest::sha256();
                     } else {
-                        algorithm = "ssh-rsa";
+                        algorithm = Algorithm::Rsa { hash: None };
                         digest = MessageDigest::sha1();
                     }
 
@@ -97,10 +103,7 @@ impl KeyStorage {
                     let mut signer = Signer::new(digest, &keypair)?;
                     signer.update(&sign_request.data)?;
 
-                    Ok(Signature {
-                        algorithm: algorithm.to_string(),
-                        blob: signer.sign_to_vec()?,
-                    })
+                    Ok(Signature::new(algorithm, signer.sign_to_vec()?).unwrap())
                 }
                 _ => Err(From::from("Signature for key type not implemented")),
             }
@@ -116,27 +119,30 @@ impl KeyStorage {
                 let mut identities = vec![];
                 for identity in self.identities.read().unwrap().iter() {
                     identities.push(message::Identity {
-                        pubkey_blob: to_bytes(&identity.pubkey)?,
+                        pubkey: identity.pubkey.key_data().clone(),
                         comment: identity.comment.clone(),
                     })
                 }
                 Ok(Message::IdentitiesAnswer(identities))
             }
             Message::RemoveIdentity(identity) => {
-                let pubkey: PublicKey = from_bytes(&identity.pubkey_blob)?;
+                let pubkey: PublicKey = identity.pubkey.try_into()?;
                 self.identity_remove(&pubkey)?;
                 Ok(Message::Success)
             }
             Message::AddIdentity(identity) => {
+                println!("add_identity0");
+                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
                 self.identity_add(Identity {
-                    pubkey: PublicKey::from(&identity.privkey),
-                    privkey: identity.privkey,
+                    pubkey: PublicKey::from(&privkey),
+                    privkey: privkey,
                     comment: identity.comment,
                 });
+                println!("add_identity1");
                 Ok(Message::Success)
             }
             Message::SignRequest(request) => {
-                let signature = to_bytes(&self.sign(&request)?)?;
+                let signature = self.sign(&request)?;
                 Ok(Message::SignResponse(signature))
             }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
@@ -162,13 +168,13 @@ impl Agent for KeyStorage {
     }
 }
 
-fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<dyn Error>> {
-    let n = BigNum::from_slice(&ssh_rsa.n)?;
-    let e = BigNum::from_slice(&ssh_rsa.e)?;
-    let d = BigNum::from_slice(&ssh_rsa.d)?;
-    let qi = BigNum::from_slice(&ssh_rsa.iqmp)?;
-    let p = BigNum::from_slice(&ssh_rsa.p)?;
-    let q = BigNum::from_slice(&ssh_rsa.q)?;
+fn rsa_openssl_from_ssh(ssh_rsa: &RsaKeypair) -> Result<Rsa<Private>, Box<dyn Error>> {
+    let n = BigNum::from_slice(&ssh_rsa.public.n.as_bytes())?;
+    let e = BigNum::from_slice(&ssh_rsa.public.e.as_bytes())?;
+    let d = BigNum::from_slice(&ssh_rsa.private.d.as_bytes())?;
+    let qi = BigNum::from_slice(&ssh_rsa.private.iqmp.as_bytes())?;
+    let p = BigNum::from_slice(&ssh_rsa.private.p.as_bytes())?;
+    let q = BigNum::from_slice(&ssh_rsa.private.q.as_bytes())?;
     let dp = &d % &(&p - &BigNum::from_u32(1)?);
     let dq = &d % &(&q - &BigNum::from_u32(1)?);
 
