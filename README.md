@@ -15,15 +15,14 @@ use async_trait::async_trait;
 use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::Agent;
+use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::message::{Message, SignRequest};
 
 struct MyAgent;
 
 #[async_trait]
 impl Agent for MyAgent {
-    type Error = ();
-
-    async fn handle(&self, message: Message) -> Result<Message, ()> {
+    async fn handle(&self, message: Message) -> Result<Message, AgentError> {
         match message {
             Message::SignRequest(request) => {
                 // get the signature by signing `request.data`

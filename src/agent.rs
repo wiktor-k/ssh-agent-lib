@@ -7,7 +7,6 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use std::error::Error;
 use std::fmt;
 use std::io;
 use std::marker::Unpin;
@@ -111,11 +110,9 @@ impl ListeningSocket for TcpListener {
 
 #[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
-    type Error: fmt::Debug + Send + Sync;
+    async fn handle(&self, message: Message) -> Result<Message, AgentError>;
 
-    async fn handle(&self, message: Message) -> Result<Message, Self::Error>;
-
-    async fn listen<S>(self, socket: S) -> Result<(), Box<dyn Error + Send + Sync>>
+    async fn listen<S>(self, socket: S) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
     {
@@ -136,7 +133,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
                 }
                 Err(e) => {
                     error!("Failed to accept socket; error = {:?}", e);
-                    return Err(Box::new(e));
+                    return Err(AgentError::IO(e));
                 }
             }
         }
