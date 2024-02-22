@@ -129,7 +129,9 @@ pub trait Agent: 'static + Sync + Send + Sized {
                     let mut session = Session::new(agent, socket);
 
                     tokio::spawn(async move {
-                        let _ = session.handle_socket().await;
+                        if let Err(e) = session.handle_socket().await {
+                            error!("Agent protocol error; error = {:?}", e);
+                        }
                     });
                 }
                 Err(e) => {
