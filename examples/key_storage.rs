@@ -1,4 +1,6 @@
+use async_trait::async_trait;
 use log::info;
+use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::Agent;
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
@@ -143,10 +145,11 @@ impl KeyStorage {
     }
 }
 
+#[async_trait]
 impl Agent for KeyStorage {
     type Error = ();
 
-    fn handle(&self, message: Message) -> Result<Message, ()> {
+    async fn handle(&self, message: Message) -> Result<Message, ()> {
         self.handle_message(message).or_else(|error| {
             println!("Error handling message - {:?}", error);
             Ok(Message::Failure)
@@ -167,12 +170,14 @@ fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<dyn
     Ok(Rsa::from_private_components(n, e, d, p, q, dp, dq, qi)?)
 }
 
-fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let agent = KeyStorage::new();
     let socket = "connect.sock";
     let _ = remove_file(socket);
-
     env_logger::init();
-    agent.run_unix(socket)?;
+    let socket = UnixListener::bind(socket)?;
+
+    agent.listen(socket).await?;
     Ok(())
 }
