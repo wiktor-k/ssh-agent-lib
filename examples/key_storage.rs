@@ -9,8 +9,14 @@ use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
 use ssh_agent_lib::proto::private_key::PrivateKey;
 use ssh_agent_lib::proto::public_key::PublicKey;
+use ssh_agent_lib::proto::signature::{self};
 use ssh_agent_lib::proto::signature::{self, Signature};
 use ssh_agent_lib::proto::{from_bytes, to_bytes};
+use ssh_key::{
+    private::{KeypairData, PrivateKey, RsaKeypair},
+    public::PublicKey,
+    Algorithm, HashAlg, Signature,
+};
 
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -68,11 +74,11 @@ impl KeyStorage {
     }
 
     fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<dyn Error>> {
-        let pubkey: PublicKey = from_bytes(&sign_request.pubkey_blob)?;
+        let pubkey: PublicKey = sign_request.pubkey.clone().try_into()?;
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
-            match identity.privkey {
-                PrivateKey::Rsa(ref key) => {
+            match identity.privkey.key_data() {
+                KeypairData::Rsa(ref key) => {
                     let algorithm;
 
                     let private_key = rsa::RsaPrivateKey::from_components(
@@ -97,11 +103,10 @@ impl KeyStorage {
                         algorithm = "ssh-rsa";
                         SigningKey::<Sha1>::new(private_key).sign_with_rng(&mut rng, data)
                     };
-
-                    Ok(Signature {
-                        algorithm: algorithm.to_string(),
-                        blob: signature.to_bytes().to_vec(),
-                    })
+                    Ok(Signature::new(
+                        algorithm.to_string(),
+                        signature.to_bytes().to_vec(),
+                    ))
                 }
                 _ => Err(From::from("Signature for key type not implemented")),
             }
@@ -117,27 +122,30 @@ impl KeyStorage {
                 let mut identities = vec![];
                 for identity in self.identities.lock().unwrap().iter() {
                     identities.push(message::Identity {
-                        pubkey_blob: to_bytes(&identity.pubkey)?,
+                        pubkey: identity.pubkey.key_data().clone(),
                         comment: identity.comment.clone(),
                     })
                 }
                 Ok(Message::IdentitiesAnswer(identities))
             }
             Message::RemoveIdentity(identity) => {
-                let pubkey: PublicKey = from_bytes(&identity.pubkey_blob)?;
+                let pubkey: PublicKey = identity.pubkey.try_into()?;
                 self.identity_remove(&pubkey)?;
                 Ok(Message::Success)
             }
             Message::AddIdentity(identity) => {
+                println!("add_identity0");
+                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
                 self.identity_add(Identity {
-                    pubkey: PublicKey::from(&identity.privkey),
-                    privkey: identity.privkey,
+                    pubkey: PublicKey::from(&privkey),
+                    privkey: privkey,
                     comment: identity.comment,
                 });
+                println!("add_identity1");
                 Ok(Message::Success)
             }
             Message::SignRequest(request) => {
-                let signature = to_bytes(&self.sign(&request)?)?;
+                let signature = self.sign(&request)?;
                 Ok(Message::SignResponse(signature))
             }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
