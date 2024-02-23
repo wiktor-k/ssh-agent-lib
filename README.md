@@ -18,7 +18,7 @@ use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Session, Agent};
 use ssh_agent_lib::error::AgentError;
-use ssh_agent_lib::proto::message::{Message, SignRequest};
+use ssh_agent_lib::proto::message::Message;
 
 #[derive(Default)]
 struct MyAgent;
