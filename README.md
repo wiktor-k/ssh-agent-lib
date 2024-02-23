@@ -36,7 +36,7 @@ impl Session for MyAgent {
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket = "ssh-agent.sock";
     let _ = std::fs::remove_file(socket); // remove the socket if exists
