@@ -14,15 +14,16 @@ processes requests.
 use async_trait::async_trait;
 use tokio::net::UnixListener;
 
-use ssh_agent_lib::agent::Agent;
+use ssh_agent_lib::agent::{Session, Agent};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::message::{Message, SignRequest};
 
+#[derive(Default)]
 struct MyAgent;
 
 #[async_trait]
-impl Agent for MyAgent {
-    async fn handle(&self, message: Message) -> Result<Message, AgentError> {
+impl Session for MyAgent {
+    async fn handle(&mut self, message: Message) -> Result<Message, AgentError> {
         match message {
             Message::SignRequest(request) => {
                 // get the signature by signing `request.data`
