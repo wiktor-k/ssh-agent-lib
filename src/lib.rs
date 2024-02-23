@@ -9,3 +9,6 @@ pub mod error;
 
 #[cfg(feature = "agent")]
 pub use self::agent::Agent;
+
+#[cfg(feature = "agent")]
+pub use async_trait::async_trait;

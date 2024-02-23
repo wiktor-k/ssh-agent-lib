@@ -12,7 +12,6 @@ This makes it possible to utilize remote keys not supported by the default OpenS
 This example starts listening on a Unix socket `ssh-agent.sock` and processes requests.
 
 ```rust,no_run
-use async_trait::async_trait;
 use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Session, Agent};
@@ -22,7 +21,7 @@ use ssh_agent_lib::proto::message::Message;
 #[derive(Default)]
 struct MyAgent;
 
-#[async_trait]
+#[ssh_agent_lib::async_trait]
 impl Session for MyAgent {
     async fn handle(&mut self, message: Message) -> Result<Message, AgentError> {
         match message {
