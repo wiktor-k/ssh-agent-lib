@@ -7,18 +7,17 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use std::error::Error;
 use std::fmt;
 use std::io;
 use std::marker::Unpin;
 use std::mem::size_of;
-use std::sync::Arc;
 
 use super::error::AgentError;
 use super::proto::message::Message;
 use super::proto::{from_bytes, to_bytes};
 
-struct MessageCodec;
+#[derive(Debug)]
+pub struct MessageCodec;
 
 impl Decoder for MessageCodec {
     type Item = Message;
@@ -53,39 +52,6 @@ impl Encoder<Message> for MessageCodec {
     }
 }
 
-struct Session<A, S> {
-    agent: Arc<A>,
-    adapter: Framed<S, MessageCodec>,
-}
-
-impl<A, S> Session<A, S>
-where
-    A: Agent,
-    S: AsyncRead + AsyncWrite + Unpin,
-{
-    fn new(agent: Arc<A>, socket: S) -> Self {
-        let adapter = Framed::new(socket, MessageCodec);
-        Self { agent, adapter }
-    }
-
-    async fn handle_socket(&mut self) -> Result<(), AgentError> {
-        loop {
-            if let Some(incoming_message) = self.adapter.try_next().await? {
-                let response = self.agent.handle(incoming_message).await.map_err(|e| {
-                    error!("Error handling message; error = {:?}", e);
-                    AgentError::User
-                })?;
-
-                self.adapter.send(response).await?;
-            } else {
-                // Reached EOF of the stream (client disconnected),
-                // we can close the socket and exit the handler.
-                return Ok(());
-            }
-        }
-    }
-}
-
 #[async_trait]
 pub trait ListeningSocket {
     type Stream: fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static;
@@ -110,35 +76,66 @@ impl ListeningSocket for TcpListener {
 }
 
 #[async_trait]
+pub trait Session: 'static + Sync + Send + Sized {
+    async fn handle(&mut self, message: Message) -> Result<Message, AgentError>;
+
+    async fn handle_socket<S>(
+        &mut self,
+        mut adapter: Framed<S::Stream, MessageCodec>,
+    ) -> Result<(), AgentError>
+    where
+        S: ListeningSocket + fmt::Debug + Send,
+    {
+        loop {
+            if let Some(incoming_message) = adapter.try_next().await? {
+                let response = self.handle(incoming_message).await.map_err(|e| {
+                    error!("Error handling message; error = {:?}", e);
+                    AgentError::User
+                })?;
+
+                adapter.send(response).await?;
+            } else {
+                // Reached EOF of the stream (client disconnected),
+                // we can close the socket and exit the handler.
+                return Ok(());
+            }
+        }
+    }
+}
+
+#[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
-    type Error: fmt::Debug + Send + Sync;
-
-    async fn handle(&self, message: Message) -> Result<Message, Self::Error>;
-
-    async fn listen<S>(self, socket: S) -> Result<(), Box<dyn Error + Send + Sync>>
+    fn new_session(&mut self) -> impl Session;
+    async fn listen<S>(mut self, socket: S) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
     {
         info!("Listening; socket = {:?}", socket);
-        let arc_self = Arc::new(self);
-
         loop {
             match socket.accept().await {
                 Ok(socket) => {
-                    let agent = arc_self.clone();
-                    let mut session = Session::new(agent, socket);
-
+                    let mut session = self.new_session();
                     tokio::spawn(async move {
-                        if let Err(e) = session.handle_socket().await {
+                        let adapter = Framed::new(socket, MessageCodec);
+                        if let Err(e) = session.handle_socket::<S>(adapter).await {
                             error!("Agent protocol error; error = {:?}", e);
                         }
                     });
                 }
                 Err(e) => {
                     error!("Failed to accept socket; error = {:?}", e);
-                    return Err(Box::new(e));
+                    return Err(AgentError::IO(e));
                 }
             }
         }
+    }
+}
+
+impl<T> Agent for T
+where
+    T: Default + Session,
+{
+    fn new_session(&mut self) -> impl Session {
+        Self::default()
     }
 }
