@@ -54,3 +54,11 @@ For more elaborate example see `examples` directory.
 This library has been forked from
 [sekey/ssh-agent.rs](https://github.com/sekey/ssh-agent.rs) as the
 upstream seems not be maintained (at least as of 2022).
+
+# License
+
+This project is licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this crate by you shall be licensed as above, without any additional terms or conditions.
