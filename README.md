@@ -9,8 +9,7 @@ This makes it possible to utilize remote keys not supported by the default OpenS
 
 ## Example
 
-This example starts listening on a Unix socket `connect.sock` and
-processes requests.
+This example starts listening on a Unix socket `ssh-agent.sock` and processes requests.
 
 ```rust,no_run
 use async_trait::async_trait;
@@ -38,18 +37,22 @@ impl Session for MyAgent {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let agent = MyAgent;
-    let socket = "connect.sock";
-    let _ = std::fs::remove_file(socket);
-    let socket = UnixListener::bind(socket)?;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let socket = "ssh-agent.sock";
+    let _ = std::fs::remove_file(socket); // remove the socket if exists
 
-    agent.listen(socket).await?;
+    MyAgent.listen(UnixListener::bind(socket)?).await?;
     Ok(())
 }
 ```
 
-For more elaborate example see `examples` directory.
+Now, point your OpenSSH client to this socket using `SSH_AUTH_SOCK` environment variable and it will transparently use the agent:
+
+```sh
+SSH_AUTH_SOCK=ssh-agent.sock ssh user@example.com
+```
+
+For more elaborate example see the `examples` directory or [crates using `ssh-agent-lib`](https://crates.io/crates/ssh-agent-lib/reverse_dependencies).
 
 ## Note
 
