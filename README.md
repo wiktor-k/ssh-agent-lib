@@ -3,7 +3,7 @@
 [![CI](https://github.com/wiktor-k/ssh-agent-lib/actions/workflows/ci.yml/badge.svg)](https://github.com/wiktor-k/ssh-agent-lib/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/ssh-agent-lib)](https://crates.io/crates/ssh-agent-lib)
 
-A collection of types for writing custom SSH agents.
+A collection of types for writing custom SSH agents as specified by the [SSH Agent Protocol Internet Draft](https://datatracker.ietf.org/doc/html/draft-miller-ssh-agent).
 
 This makes it possible to utilize remote keys not supported by the default OpenSSH agent.
 
