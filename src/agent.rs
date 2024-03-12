@@ -88,10 +88,13 @@ pub trait Session: 'static + Sync + Send + Sized {
     {
         loop {
             if let Some(incoming_message) = adapter.try_next().await? {
-                let response = self.handle(incoming_message).await.map_err(|e| {
-                    error!("Error handling message; error = {:?}", e);
-                    AgentError::User
-                })?;
+                let response = match self.handle(incoming_message).await {
+                    Ok(message) => message,
+                    Err(e) => {
+                        error!("Error handling message; error = {:?}", e);
+                        Message::Failure
+                    }
+                };
 
                 adapter.send(response).await?;
             } else {
