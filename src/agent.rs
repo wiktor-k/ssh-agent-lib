@@ -91,7 +91,7 @@ pub trait Session: 'static + Sync + Send + Sized {
                 let response = match self.handle(incoming_message).await {
                     Ok(message) => message,
                     Err(e) => {
-                        error!("Error handling message; error = {:?}", e);
+                        error!("Error handling message: {:?}", e);
                         Message::Failure
                     }
                 };
@@ -121,12 +121,12 @@ pub trait Agent: 'static + Sync + Send + Sized {
                     tokio::spawn(async move {
                         let adapter = Framed::new(socket, MessageCodec);
                         if let Err(e) = session.handle_socket::<S>(adapter).await {
-                            error!("Agent protocol error; error = {:?}", e);
+                            error!("Agent protocol error: {:?}", e);
                         }
                     });
                 }
                 Err(e) => {
-                    error!("Failed to accept socket; error = {:?}", e);
+                    error!("Failed to accept socket: {:?}", e);
                     return Err(AgentError::IO(e));
                 }
             }
