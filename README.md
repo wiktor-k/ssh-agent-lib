@@ -15,7 +15,6 @@ This example starts listening on a Unix socket `ssh-agent.sock` and processes re
 use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Session, Agent};
-use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::message::Message;
 
 #[derive(Default)]
@@ -23,7 +22,7 @@ struct MyAgent;
 
 #[ssh_agent_lib::async_trait]
 impl Session for MyAgent {
-    async fn handle(&mut self, message: Message) -> Result<Message, AgentError> {
+    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>> {
         match message {
             Message::SignRequest(request) => {
                 // get the signature by signing `request.data`

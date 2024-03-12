@@ -77,7 +77,7 @@ impl ListeningSocket for TcpListener {
 
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
-    async fn handle(&mut self, message: Message) -> Result<Message, AgentError>;
+    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>>;
 
     async fn handle_socket<S>(
         &mut self,
