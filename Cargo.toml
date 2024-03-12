@@ -8,8 +8,11 @@ authors = [
     "Federico Pomar <fmpomar@users.noreply.github.com>",
     "Wiktor Kwapisiewicz <wiktor@metacode.biz>"
 ]
-repository = "https://github.com/wiktor-k/ssh-agent.rs"
+repository = "https://github.com/wiktor-k/ssh-agent-lib"
 edition = "2021"
+keywords = ["ssh", "agent", "authentication", "openssh", "async"]
+categories = ["authentication", "cryptography", "encoding", "network-programming", "parsing"]
+exclude = [".github"]
 
 [dependencies]
 byteorder = "1.4.3"
