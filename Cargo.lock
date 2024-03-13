@@ -483,6 +483,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "service-binding"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f8418a60a094aaaf2bd38ed3ee4fea0b188bf5903a9655c144085f1464c221b"
+
+[[package]]
 name = "slab"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -513,6 +519,7 @@ dependencies = [
  "log",
  "openssl",
  "serde",
+ "service-binding",
  "tokio",
  "tokio-util",
 ]
