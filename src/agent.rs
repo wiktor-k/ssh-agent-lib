@@ -132,6 +132,16 @@ pub trait Agent: 'static + Sync + Send + Sized {
             }
         }
     }
+    async fn bind(mut self, listener: service_binding::Listener) -> Result<(), AgentError> {
+        match listener {
+            service_binding::Listener::Unix(listener) => {
+                self.listen(UnixListener::from_std(listener)?).await
+            }
+            service_binding::Listener::Tcp(listener) => {
+                self.listen(TcpListener::from_std(listener)?).await
+            }
+        }
+    }
 }
 
 impl<T> Agent for T
