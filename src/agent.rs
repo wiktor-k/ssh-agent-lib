@@ -77,7 +77,7 @@ impl ListeningSocket for TcpListener {
 
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
-    async fn handle(&mut self, message: Message) -> Result<Message, AgentError>;
+    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>>;
 
     async fn handle_socket<S>(
         &mut self,
@@ -88,10 +88,13 @@ pub trait Session: 'static + Sync + Send + Sized {
     {
         loop {
             if let Some(incoming_message) = adapter.try_next().await? {
-                let response = self.handle(incoming_message).await.map_err(|e| {
-                    error!("Error handling message; error = {:?}", e);
-                    AgentError::User
-                })?;
+                let response = match self.handle(incoming_message).await {
+                    Ok(message) => message,
+                    Err(e) => {
+                        error!("Error handling message: {:?}", e);
+                        Message::Failure
+                    }
+                };
 
                 adapter.send(response).await?;
             } else {
@@ -118,12 +121,12 @@ pub trait Agent: 'static + Sync + Send + Sized {
                     tokio::spawn(async move {
                         let adapter = Framed::new(socket, MessageCodec);
                         if let Err(e) = session.handle_socket::<S>(adapter).await {
-                            error!("Agent protocol error; error = {:?}", e);
+                            error!("Agent protocol error: {:?}", e);
                         }
                     });
                 }
                 Err(e) => {
-                    error!("Failed to accept socket; error = {:?}", e);
+                    error!("Failed to accept socket: {:?}", e);
                     return Err(AgentError::IO(e));
                 }
             }

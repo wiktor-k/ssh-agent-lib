@@ -3,7 +3,6 @@ use log::info;
 use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Agent, Session};
-use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
 use ssh_agent_lib::proto::private_key::{PrivateKey, RsaPrivateKey};
 use ssh_agent_lib::proto::public_key::PublicKey;
@@ -148,11 +147,8 @@ impl KeyStorage {
 
 #[async_trait]
 impl Session for KeyStorage {
-    async fn handle(&mut self, message: Message) -> Result<Message, AgentError> {
-        self.handle_message(message).or_else(|error| {
-            println!("Error handling message - {:?}", error);
-            Ok(Message::Failure)
-        })
+    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>> {
+        self.handle_message(message)
     }
 }
 

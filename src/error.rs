@@ -3,7 +3,6 @@ use std::io;
 
 #[derive(Debug)]
 pub enum AgentError {
-    User,
     Proto(ProtoError),
     IO(io::Error),
 }
@@ -23,7 +22,6 @@ impl From<io::Error> for AgentError {
 impl std::fmt::Display for AgentError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AgentError::User => write!(f, "Agent: User error"),
             AgentError::Proto(proto) => write!(f, "Agent: Protocol error: {}", proto),
             AgentError::IO(error) => write!(f, "Agent: I/O error: {}", error),
         }
