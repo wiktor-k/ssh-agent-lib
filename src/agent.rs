@@ -4,7 +4,9 @@ use bytes::{Buf, BufMut, BytesMut};
 use futures::{SinkExt, TryStreamExt};
 use log::{error, info};
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
+use tokio::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use std::fmt;
@@ -59,6 +61,7 @@ pub trait ListeningSocket {
     async fn accept(&self) -> io::Result<Self::Stream>;
 }
 
+#[cfg(unix)]
 #[async_trait]
 impl ListeningSocket for UnixListener {
     type Stream = UnixStream;
@@ -134,6 +137,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
     }
     async fn bind(mut self, listener: service_binding::Listener) -> Result<(), AgentError> {
         match listener {
+            #[cfg(unix)]
             service_binding::Listener::Unix(listener) => {
                 self.listen(UnixListener::from_std(listener)?).await
             }
