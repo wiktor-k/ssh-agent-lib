@@ -484,9 +484,9 @@ dependencies = [
 
 [[package]]
 name = "service-binding"
-version = "1.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f8418a60a094aaaf2bd38ed3ee4fea0b188bf5903a9655c144085f1464c221b"
+checksum = "2ef733c6f7034fe1a9c3d812cdef93f2bec735e22b0467f84063de142be42428"
 
 [[package]]
 name = "slab"

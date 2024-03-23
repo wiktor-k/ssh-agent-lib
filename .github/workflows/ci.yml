@@ -22,7 +22,13 @@ jobs:
 
   formatting:
     name: Check formatting
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+        - os: macos-latest
+        - os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Check formatting
@@ -30,7 +36,13 @@ jobs:
 
   tests:
     name: Unit tests
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+        - os: macos-latest
+        - os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Build and test
@@ -38,7 +50,13 @@ jobs:
        
   lints:
     name: Clippy lints
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+        - os: macos-latest
+        - os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Check for lints
