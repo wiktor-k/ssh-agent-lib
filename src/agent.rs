@@ -56,26 +56,25 @@ impl Encoder<Message> for MessageCodec {
     }
 }
 
-#[async_trait]
 pub trait ListeningSocket {
-    type Stream: fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static;
-
-    async fn accept(&mut self) -> io::Result<Self::Stream>;
+    async fn accept(
+        &mut self,
+    ) -> io::Result<impl fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static>;
 }
 
 #[cfg(unix)]
-#[async_trait]
 impl ListeningSocket for UnixListener {
-    type Stream = UnixStream;
-    async fn accept(&mut self) -> io::Result<Self::Stream> {
+    async fn accept(
+        &mut self,
+    ) -> io::Result<impl fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static> {
         UnixListener::accept(self).await.map(|(s, _addr)| s)
     }
 }
 
-#[async_trait]
 impl ListeningSocket for TcpListener {
-    type Stream = TcpStream;
-    async fn accept(&mut self) -> io::Result<Self::Stream> {
+    async fn accept(
+        &mut self,
+    ) -> io::Result<impl fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static> {
         TcpListener::accept(self).await.map(|(s, _addr)| s)
     }
 }
@@ -97,10 +96,10 @@ impl NamedPipeListener {
 }
 
 #[cfg(windows)]
-#[async_trait]
 impl ListeningSocket for NamedPipeListener {
-    type Stream = NamedPipeServer;
-    async fn accept(&mut self) -> io::Result<Self::Stream> {
+    async fn accept(
+        &mut self,
+    ) -> io::Result<impl fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static> {
         self.0.connect().await?;
         Ok(std::mem::replace(
             &mut self.0,
@@ -115,7 +114,10 @@ pub trait Session: 'static + Sync + Send + Sized {
 
     async fn handle_socket<S>(
         &mut self,
-        mut adapter: Framed<S::Stream, MessageCodec>,
+        mut adapter: Framed<
+            impl fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static,
+            MessageCodec,
+        >,
     ) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
@@ -140,7 +142,6 @@ pub trait Session: 'static + Sync + Send + Sized {
     }
 }
 
-#[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
     fn new_session(&mut self) -> impl Session;
     async fn listen<S>(mut self, mut socket: S) -> Result<(), AgentError>
