@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 #[cfg(windows)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    MyAgent.listen(NamedPipeListener::new(r"\\.\pipe\agent")?).await?;
+    MyAgent.listen(NamedPipeListener::new(r"\\.\pipe\agent".into())?).await?;
     Ok(())
 }
 ```
