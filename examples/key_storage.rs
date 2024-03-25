@@ -1,24 +1,25 @@
 use async_trait::async_trait;
 use log::info;
+#[cfg(windows)]
+use ssh_agent_lib::agent::NamedPipeListener;
+#[cfg(not(windows))]
 use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
-use ssh_agent_lib::proto::private_key::{PrivateKey, RsaPrivateKey};
+use ssh_agent_lib::proto::private_key::PrivateKey;
 use ssh_agent_lib::proto::public_key::PublicKey;
 use ssh_agent_lib::proto::signature::{self, Signature};
 use ssh_agent_lib::proto::{from_bytes, to_bytes};
 
 use std::error::Error;
-use std::fs::remove_file;
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex};
 
-use openssl::bn::BigNum;
-use openssl::hash::MessageDigest;
-use openssl::pkey::PKey;
-use openssl::pkey::Private;
-use openssl::rsa::Rsa;
-use openssl::sign::Signer;
+use rsa::pkcs1v15::SigningKey;
+use rsa::sha2::{Sha256, Sha512};
+use rsa::signature::{RandomizedSigner, SignatureEncoding};
+use rsa::BigUint;
+use sha1::Sha1;
 
 #[derive(Clone, PartialEq, Debug)]
 struct Identity {
@@ -28,43 +29,37 @@ struct Identity {
 }
 
 struct KeyStorage {
-    identities: RwLock<Vec<Identity>>,
+    identities: Arc<Mutex<Vec<Identity>>>,
 }
 
 impl KeyStorage {
-    fn new() -> Self {
-        Self {
-            identities: RwLock::new(vec![]),
-        }
-    }
-
     fn identity_index_from_pubkey(identities: &Vec<Identity>, pubkey: &PublicKey) -> Option<usize> {
         for (index, identity) in identities.iter().enumerate() {
             if &identity.pubkey == pubkey {
                 return Some(index);
             }
         }
-        return None;
+        None
     }
 
     fn identity_from_pubkey(&self, pubkey: &PublicKey) -> Option<Identity> {
-        let identities = self.identities.read().unwrap();
+        let identities = self.identities.lock().unwrap();
 
         let index = Self::identity_index_from_pubkey(&identities, pubkey)?;
         Some(identities[index].clone())
     }
 
     fn identity_add(&self, identity: Identity) {
-        let mut identities = self.identities.write().unwrap();
-        if Self::identity_index_from_pubkey(&identities, &identity.pubkey) == None {
+        let mut identities = self.identities.lock().unwrap();
+        if Self::identity_index_from_pubkey(&identities, &identity.pubkey).is_none() {
             identities.push(identity);
         }
     }
 
     fn identity_remove(&self, pubkey: &PublicKey) -> Result<(), Box<dyn Error>> {
-        let mut identities = self.identities.write().unwrap();
+        let mut identities = self.identities.lock().unwrap();
 
-        if let Some(index) = Self::identity_index_from_pubkey(&identities, &pubkey) {
+        if let Some(index) = Self::identity_index_from_pubkey(&identities, pubkey) {
             identities.remove(index);
             Ok(())
         } else {
@@ -79,26 +74,33 @@ impl KeyStorage {
             match identity.privkey {
                 PrivateKey::Rsa(ref key) => {
                     let algorithm;
-                    let digest;
 
-                    if sign_request.flags & signature::RSA_SHA2_512 != 0 {
+                    let private_key = rsa::RsaPrivateKey::from_components(
+                        BigUint::from_bytes_be(&key.n),
+                        BigUint::from_bytes_be(&key.e),
+                        BigUint::from_bytes_be(&key.d),
+                        vec![
+                            BigUint::from_bytes_be(&key.p),
+                            BigUint::from_bytes_be(&key.q),
+                        ],
+                    )?;
+                    let mut rng = rand::thread_rng();
+                    let data = &sign_request.data;
+
+                    let signature = if sign_request.flags & signature::RSA_SHA2_512 != 0 {
                         algorithm = "rsa-sha2-512";
-                        digest = MessageDigest::sha512();
+                        SigningKey::<Sha512>::new(private_key).sign_with_rng(&mut rng, data)
                     } else if sign_request.flags & signature::RSA_SHA2_256 != 0 {
                         algorithm = "rsa-sha2-256";
-                        digest = MessageDigest::sha256();
+                        SigningKey::<Sha256>::new(private_key).sign_with_rng(&mut rng, data)
                     } else {
                         algorithm = "ssh-rsa";
-                        digest = MessageDigest::sha1();
-                    }
-
-                    let keypair = PKey::from_rsa(rsa_openssl_from_ssh(key)?)?;
-                    let mut signer = Signer::new(digest, &keypair)?;
-                    signer.update(&sign_request.data)?;
+                        SigningKey::<Sha1>::new(private_key).sign_with_rng(&mut rng, data)
+                    };
 
                     Ok(Signature {
                         algorithm: algorithm.to_string(),
-                        blob: signer.sign_to_vec()?,
+                        blob: signature.to_bytes().to_vec(),
                     })
                 }
                 _ => Err(From::from("Signature for key type not implemented")),
@@ -113,7 +115,7 @@ impl KeyStorage {
         let response = match request {
             Message::RequestIdentities => {
                 let mut identities = vec![];
-                for identity in self.identities.read().unwrap().iter() {
+                for identity in self.identities.lock().unwrap().iter() {
                     identities.push(message::Identity {
                         pubkey_blob: to_bytes(&identity.pubkey)?,
                         comment: identity.comment.clone(),
@@ -141,7 +143,7 @@ impl KeyStorage {
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
         };
         info!("Response {:?}", response);
-        return response;
+        response
     }
 }
 
@@ -152,33 +154,43 @@ impl Session for KeyStorage {
     }
 }
 
-impl Agent for KeyStorage {
-    fn new_session(&mut self) -> impl Session {
-        KeyStorage::new()
+struct KeyStorageAgent {
+    identities: Arc<Mutex<Vec<Identity>>>,
+}
+
+impl KeyStorageAgent {
+    fn new() -> Self {
+        Self {
+            identities: Arc::new(Mutex::new(vec![])),
+        }
     }
 }
 
-fn rsa_openssl_from_ssh(ssh_rsa: &RsaPrivateKey) -> Result<Rsa<Private>, Box<dyn Error>> {
-    let n = BigNum::from_slice(&ssh_rsa.n)?;
-    let e = BigNum::from_slice(&ssh_rsa.e)?;
-    let d = BigNum::from_slice(&ssh_rsa.d)?;
-    let qi = BigNum::from_slice(&ssh_rsa.iqmp)?;
-    let p = BigNum::from_slice(&ssh_rsa.p)?;
-    let q = BigNum::from_slice(&ssh_rsa.q)?;
-    let dp = &d % &(&p - &BigNum::from_u32(1)?);
-    let dq = &d % &(&q - &BigNum::from_u32(1)?);
-
-    Ok(Rsa::from_private_components(n, e, d, p, q, dp, dq, qi)?)
+impl Agent for KeyStorageAgent {
+    fn new_session(&mut self) -> impl Session {
+        KeyStorage {
+            identities: Arc::clone(&self.identities),
+        }
+    }
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-    let agent = KeyStorage::new();
-    let socket = "connect.sock";
-    let _ = remove_file(socket);
-    env_logger::init();
-    let socket = UnixListener::bind(socket)?;
+#[tokio::main]
+#[cfg(not(windows))]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let socket = "ssh-agent.sock";
+    let _ = std::fs::remove_file(socket); // remove the socket if exists
 
-    agent.listen(socket).await?;
+    KeyStorageAgent::new()
+        .listen(UnixListener::bind(socket)?)
+        .await?;
+    Ok(())
+}
+
+#[tokio::main]
+#[cfg(windows)]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    KeyStorageAgent::new()
+        .listen(NamedPipeListener::new(r"\\.\pipe\agent".into())?)
+        .await?;
     Ok(())
 }

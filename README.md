@@ -9,10 +9,14 @@ This makes it possible to utilize remote keys not supported by the default OpenS
 
 ## Example
 
-This example starts listening on a Unix socket `ssh-agent.sock` and processes requests.
+The following example starts listening on a socket and processing requests.
+On Unix it uses `ssh-agent.sock` Unix domain socket while on Windows it uses a named pipe `\\.\pipe\agent`.
 
 ```rust,no_run
+#[cfg(not(windows))]
 use tokio::net::UnixListener;
+#[cfg(windows)]
+use ssh_agent_lib::agent::NamedPipeListener;
 
 use ssh_agent_lib::agent::{Session, Agent};
 use ssh_agent_lib::proto::message::Message;
@@ -35,11 +39,19 @@ impl Session for MyAgent {
 }
 
 #[tokio::main]
+#[cfg(not(windows))]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket = "ssh-agent.sock";
     let _ = std::fs::remove_file(socket); // remove the socket if exists
 
     MyAgent.listen(UnixListener::bind(socket)?).await?;
+    Ok(())
+}
+
+#[tokio::main]
+#[cfg(windows)]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    MyAgent.listen(NamedPipeListener::new(r"\\.\pipe\agent".into())?).await?;
     Ok(())
 }
 ```
@@ -48,6 +60,12 @@ Now, point your OpenSSH client to this socket using `SSH_AUTH_SOCK` environment 
 
 ```sh
 SSH_AUTH_SOCK=ssh-agent.sock ssh user@example.com
+```
+
+On Windows the path of the pipe has to be used:
+
+```sh
+SSH_AUTH_SOCK=\\.\pipe\agent ssh user@example.com
 ```
 
 For more elaborate example see the `examples` directory or [crates using `ssh-agent-lib`](https://crates.io/crates/ssh-agent-lib/reverse_dependencies).

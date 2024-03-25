@@ -24,7 +24,7 @@ futures = { version = "0.3.30", optional = true }
 log = { version = "0.4.6", optional = true }
 tokio = { version = "1", optional = true, features = ["rt", "net"] }
 tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
-service-binding = "1.1.0"
+service-binding = { version = "^2" }
 
 [features]
 default = ["agent"]
@@ -36,5 +36,7 @@ required-features = ["agent"]
 
 [dev-dependencies]
 env_logger = "0.11.0"
-openssl = "0.10.16"
+rand = "0.8.5"
+rsa = { version = "0.9.6", features = ["sha2", "sha1"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+sha1 = { version = "0.10.5", default-features = false, features = ["oid"] }

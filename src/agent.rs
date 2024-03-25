@@ -4,7 +4,11 @@ use bytes::{Buf, BufMut, BytesMut};
 use futures::{SinkExt, TryStreamExt};
 use log::{error, info};
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
+#[cfg(windows)]
+use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use tokio::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use std::fmt;
@@ -56,13 +60,14 @@ impl Encoder<Message> for MessageCodec {
 pub trait ListeningSocket {
     type Stream: fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static;
 
-    async fn accept(&self) -> io::Result<Self::Stream>;
+    async fn accept(&mut self) -> io::Result<Self::Stream>;
 }
 
+#[cfg(unix)]
 #[async_trait]
 impl ListeningSocket for UnixListener {
     type Stream = UnixStream;
-    async fn accept(&self) -> io::Result<Self::Stream> {
+    async fn accept(&mut self) -> io::Result<Self::Stream> {
         UnixListener::accept(self).await.map(|(s, _addr)| s)
     }
 }
@@ -70,8 +75,37 @@ impl ListeningSocket for UnixListener {
 #[async_trait]
 impl ListeningSocket for TcpListener {
     type Stream = TcpStream;
-    async fn accept(&self) -> io::Result<Self::Stream> {
+    async fn accept(&mut self) -> io::Result<Self::Stream> {
         TcpListener::accept(self).await.map(|(s, _addr)| s)
+    }
+}
+
+#[cfg(windows)]
+#[derive(Debug)]
+pub struct NamedPipeListener(NamedPipeServer, std::ffi::OsString);
+
+#[cfg(windows)]
+impl NamedPipeListener {
+    pub fn new(pipe: std::ffi::OsString) -> std::io::Result<Self> {
+        Ok(NamedPipeListener(
+            ServerOptions::new()
+                .first_pipe_instance(true)
+                .create(&pipe)?,
+            pipe,
+        ))
+    }
+}
+
+#[cfg(windows)]
+#[async_trait]
+impl ListeningSocket for NamedPipeListener {
+    type Stream = NamedPipeServer;
+    async fn accept(&mut self) -> io::Result<Self::Stream> {
+        self.0.connect().await?;
+        Ok(std::mem::replace(
+            &mut self.0,
+            ServerOptions::new().create(&self.1)?,
+        ))
     }
 }
 
@@ -109,7 +143,7 @@ pub trait Session: 'static + Sync + Send + Sized {
 #[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
     fn new_session(&mut self) -> impl Session;
-    async fn listen<S>(mut self, socket: S) -> Result<(), AgentError>
+    async fn listen<S>(mut self, mut socket: S) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
     {
@@ -134,12 +168,21 @@ pub trait Agent: 'static + Sync + Send + Sized {
     }
     async fn bind(mut self, listener: service_binding::Listener) -> Result<(), AgentError> {
         match listener {
+            #[cfg(unix)]
             service_binding::Listener::Unix(listener) => {
                 self.listen(UnixListener::from_std(listener)?).await
             }
             service_binding::Listener::Tcp(listener) => {
                 self.listen(TcpListener::from_std(listener)?).await
             }
+            #[cfg(windows)]
+            service_binding::Listener::NamedPipe(pipe) => {
+                self.listen(NamedPipeListener::new(pipe)?).await
+            }
+            #[cfg(not(windows))]
+            service_binding::Listener::NamedPipe(_) => Err(AgentError::IO(std::io::Error::other(
+                "Named pipes supported on Windows only",
+            ))),
         }
     }
 }
