@@ -18,5 +18,13 @@ ssh-add -L | tee agent.pub
 ssh-keygen -Y sign -f agent.pub -n file < Cargo.toml > Cargo.toml.sig
 ssh-keygen -Y check-novalidate -n file -f agent.pub -s Cargo.toml.sig < Cargo.toml
 
-rm -rf ssh-agent.sock Cargo.toml.sig id_rsa id_rsa.pub agent.pub
+rm -rf Cargo.toml.sig id_rsa id_rsa.pub agent.pub
 
+# Test other commands:
+export SSH_ASKPASS=`pwd`/tests/pwd-test.sh
+# AddSmartcardKey
+echo | ssh-add -s test
+# Lock
+echo | ssh-add -x
+# Unlock
+echo | ssh-add -X
