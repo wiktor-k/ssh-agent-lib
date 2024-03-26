@@ -87,11 +87,8 @@ impl Decode for AddIdentity {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        println!("foo0");
         let privkey = KeypairData::decode(reader)?;
-        println!("foo1");
         let comment = String::decode(reader)?;
-        println!("foo2");
 
         Ok(Self { privkey, comment })
     }
@@ -235,9 +232,7 @@ impl Decode for Message {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        println!("foo0");
         let message_type = u8::decode(reader)?;
-        println!("foo1");
 
         match message_type {
             5 => Ok(Self::Failure),
