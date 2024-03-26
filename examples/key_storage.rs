@@ -7,15 +7,11 @@ use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
-use ssh_agent_lib::proto::private_key::PrivateKey;
-use ssh_agent_lib::proto::public_key::PublicKey;
-use ssh_agent_lib::proto::signature::{self};
-use ssh_agent_lib::proto::signature::{self, Signature};
-use ssh_agent_lib::proto::{from_bytes, to_bytes};
+use ssh_agent_lib::proto::signature;
 use ssh_key::{
-    private::{KeypairData, PrivateKey, RsaKeypair},
+    private::{KeypairData, PrivateKey},
     public::PublicKey,
-    Algorithm, HashAlg, Signature,
+    Algorithm, Signature,
 };
 
 use std::error::Error;
@@ -82,13 +78,10 @@ impl KeyStorage {
                     let algorithm;
 
                     let private_key = rsa::RsaPrivateKey::from_components(
-                        BigUint::from_bytes_be(&key.n),
-                        BigUint::from_bytes_be(&key.e),
-                        BigUint::from_bytes_be(&key.d),
-                        vec![
-                            BigUint::from_bytes_be(&key.p),
-                            BigUint::from_bytes_be(&key.q),
-                        ],
+                        BigUint::from_bytes_be(&key.public.n.as_bytes()),
+                        BigUint::from_bytes_be(&key.public.e.as_bytes()),
+                        BigUint::from_bytes_be(&key.private.d.as_bytes()),
+                        vec![],
                     )?;
                     let mut rng = rand::thread_rng();
                     let data = &sign_request.data;
@@ -104,9 +97,9 @@ impl KeyStorage {
                         SigningKey::<Sha1>::new(private_key).sign_with_rng(&mut rng, data)
                     };
                     Ok(Signature::new(
-                        algorithm.to_string(),
+                        Algorithm::new(algorithm)?,
                         signature.to_bytes().to_vec(),
-                    ))
+                    )?)
                 }
                 _ => Err(From::from("Signature for key type not implemented")),
             }

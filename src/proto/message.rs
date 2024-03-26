@@ -106,7 +106,7 @@ pub struct AddIdentityConstrained {
 impl Decode for AddIdentityConstrained {
     type Error = Error;
 
-    fn decode(reader: &mut impl Reader) -> Result<Self> {
+    fn decode(_reader: &mut impl Reader) -> Result<Self> {
         todo!();
         //let identity = AddIdentity::decode(reader)?;
         //let constraints = Vec::decode(reader)?;
@@ -179,7 +179,7 @@ pub struct AddSmartcardKeyConstrained {
 impl Decode for AddSmartcardKeyConstrained {
     type Error = Error;
 
-    fn decode(reader: &mut impl Reader) -> Result<Self> {
+    fn decode(_reader: &mut impl Reader) -> Result<Self> {
         todo!()
         //let key = SmartcardKey::decode(reader)?;
         //let constraints = Vec::decode(reader)?;
@@ -197,7 +197,7 @@ pub struct Extension {
 impl Decode for Extension {
     type Error = Error;
 
-    fn decode(reader: &mut impl Reader) -> Result<Self> {
+    fn decode(_reader: &mut impl Reader) -> Result<Self> {
         todo!()
         //let key = SmartcardKey::decode(reader)?;
         //let constraints = Vec::decode(reader)?;
