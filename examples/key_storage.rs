@@ -178,6 +178,7 @@ impl Agent for KeyStorageAgent {
 #[tokio::main]
 #[cfg(not(windows))]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let socket = "ssh-agent.sock";
     let _ = std::fs::remove_file(socket); // remove the socket if exists
 
