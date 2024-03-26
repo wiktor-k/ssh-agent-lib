@@ -46,7 +46,7 @@ impl Decode for SignRequest {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let pubkey = KeyData::decode(reader)?;
+        let pubkey = reader.read_prefixed(KeyData::decode)?;
         let data = Vec::decode(reader)?;
         let flags = u32::decode(reader)?;
 
@@ -280,6 +280,7 @@ impl Encode for Message {
 
                 lengths.checked_sum()?
             }
+            Self::SignResponse(response) => response.encoded_len()? + 4,
             _ => todo!(),
         };
 
@@ -292,6 +293,7 @@ impl Encode for Message {
             Self::Success => 6,
             Self::RequestIdentities => 11,
             Self::IdentitiesAnswer(_) => 12,
+            Self::SignResponse(_) => 14,
             _ => todo!(),
         };
 
@@ -305,6 +307,9 @@ impl Encode for Message {
                 for id in ids {
                     id.encode(writer)?;
                 }
+            }
+            Self::SignResponse(response) => {
+                response.encode_prefixed(writer)?;
             }
             _ => todo!(),
         };
