@@ -128,6 +128,7 @@ pub trait Session: 'static + Sync + Send + Sized {
     {
         loop {
             if let Some(incoming_message) = adapter.try_next().await? {
+                log::debug!("Request: {incoming_message:?}");
                 let response = match self.handle(incoming_message).await {
                     Ok(message) => message,
                     Err(e) => {
@@ -135,6 +136,7 @@ pub trait Session: 'static + Sync + Send + Sized {
                         Message::Failure
                     }
                 };
+                log::debug!("Response: {response:?}");
 
                 adapter.send(response).await?;
             } else {
