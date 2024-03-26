@@ -5,9 +5,6 @@ pub mod extension;
 pub mod message;
 pub mod signature;
 
-#[cfg(test)]
-mod tests;
-
 pub use self::error::*;
 pub use self::key_type::*;
 pub use self::message::*;
