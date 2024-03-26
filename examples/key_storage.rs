@@ -127,14 +127,12 @@ impl KeyStorage {
                 Ok(Message::Success)
             }
             Message::AddIdentity(identity) => {
-                println!("add_identity0");
                 let privkey = PrivateKey::try_from(identity.privkey).unwrap();
                 self.identity_add(Identity {
                     pubkey: PublicKey::from(&privkey),
                     privkey: privkey,
                     comment: identity.comment,
                 });
-                println!("add_identity1");
                 Ok(Message::Success)
             }
             Message::SignRequest(request) => {
