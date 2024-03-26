@@ -141,6 +141,18 @@ impl KeyStorage {
                 let signature = self.sign(&request)?;
                 Ok(Message::SignResponse(signature))
             }
+            Message::AddSmartcardKey(key) => {
+                println!("Adding smartcard key: {key:?}");
+                Ok(Message::Success)
+            }
+            Message::Lock(pwd) => {
+                println!("Locked with password: {pwd:?}");
+                Ok(Message::Success)
+            }
+            Message::Unlock(pwd) => {
+                println!("Unlocked with password: {pwd:?}");
+                Ok(Message::Success)
+            }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
         };
         info!("Response {:?}", response);
