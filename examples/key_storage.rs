@@ -189,6 +189,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 #[cfg(windows)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // This is only used for integration tests on Windows:
+    std::fs::File::create("server-started")?;
+    // ^ You can remove this line
     KeyStorageAgent::new()
         .listen(NamedPipeListener::new(r"\\.\pipe\agent".into())?)
         .await?;
