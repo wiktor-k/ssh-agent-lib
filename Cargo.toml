@@ -10,6 +10,7 @@ authors = [
 ]
 repository = "https://github.com/wiktor-k/ssh-agent-lib"
 edition = "2021"
+rust-version = "1.75"
 keywords = ["ssh", "agent", "authentication", "openssh", "async"]
 categories = ["authentication", "cryptography", "encoding", "network-programming", "parsing"]
 exclude = [".github"]
