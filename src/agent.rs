@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use byteorder::{BigEndian, ReadBytesExt};
-use bytes::{Buf, BufMut, BytesMut};
 use futures::{SinkExt, TryStreamExt};
 use log::{error, info};
 use ssh_encoding::{Decode, Encode};
@@ -10,6 +9,7 @@ use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
+use tokio_util::bytes::{Buf, BufMut, BytesMut};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use std::fmt;
