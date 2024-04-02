@@ -18,7 +18,7 @@ ssh-add -L | tee agent.pub
 ssh-keygen -Y sign -f agent.pub -n file < Cargo.toml > Cargo.toml.sig
 ssh-keygen -Y check-novalidate -n file -f agent.pub -s Cargo.toml.sig < Cargo.toml
 
-rm -rf Cargo.toml.sig id_rsa id_rsa.pub agent.pub
+rm -rf Cargo.toml.sig id_rsa.pub agent.pub
 
 # Test other commands:
 export SSH_ASKPASS=`pwd`/tests/pwd-test.sh
@@ -28,3 +28,5 @@ echo | ssh-add -s test
 echo | ssh-add -x
 # Unlock
 echo | ssh-add -X
+# AddIdConstrained
+ssh-add -t 2 id_rsa

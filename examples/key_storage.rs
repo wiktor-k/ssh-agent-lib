@@ -7,7 +7,7 @@ use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
-use ssh_agent_lib::proto::signature;
+use ssh_agent_lib::proto::{signature, AddIdentityConstrained};
 use ssh_key::{
     private::{KeypairData, PrivateKey},
     public::PublicKey,
@@ -130,7 +130,20 @@ impl KeyStorage {
                 let privkey = PrivateKey::try_from(identity.privkey).unwrap();
                 self.identity_add(Identity {
                     pubkey: PublicKey::from(&privkey),
-                    privkey: privkey,
+                    privkey,
+                    comment: identity.comment,
+                });
+                Ok(Message::Success)
+            }
+            Message::AddIdConstrained(AddIdentityConstrained {
+                identity,
+                constraints,
+            }) => {
+                eprintln!("Would use these constraints: {constraints:#?}");
+                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
+                self.identity_add(Identity {
+                    pubkey: PublicKey::from(&privkey),
+                    privkey,
                     comment: identity.comment,
                 });
                 Ok(Message::Success)
