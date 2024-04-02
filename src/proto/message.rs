@@ -180,12 +180,14 @@ pub struct AddSmartcardKeyConstrained {
 impl Decode for AddSmartcardKeyConstrained {
     type Error = Error;
 
-    fn decode(_reader: &mut impl Reader) -> Result<Self> {
-        todo!()
-        //let key = SmartcardKey::decode(reader)?;
-        //let constraints = Vec::decode(reader)?;
+    fn decode(reader: &mut impl Reader) -> Result<Self> {
+        let key = SmartcardKey::decode(reader)?;
+        let mut constraints = vec![];
 
-        //Ok(Self { key, constraints })
+        while !reader.is_finished() {
+            constraints.push(KeyConstraint::decode(reader)?);
+        }
+        Ok(Self { key, constraints })
     }
 }
 
