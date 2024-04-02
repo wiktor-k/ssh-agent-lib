@@ -103,15 +103,17 @@ pub struct AddIdentityConstrained {
 impl Decode for AddIdentityConstrained {
     type Error = Error;
 
-    fn decode(_reader: &mut impl Reader) -> Result<Self> {
-        todo!();
-        //let identity = AddIdentity::decode(reader)?;
-        //let constraints = Vec::decode(reader)?;
+    fn decode(reader: &mut impl Reader) -> Result<Self> {
+        let identity = AddIdentity::decode(reader)?;
+        let mut constraints = vec![];
 
-        //Ok(Self {
-        //    identity,
-        //    constraints,
-        //})
+        while !reader.is_finished() {
+            constraints.push(KeyConstraint::decode(reader)?);
+        }
+        Ok(Self {
+            identity,
+            constraints,
+        })
     }
 }
 
@@ -148,9 +150,10 @@ impl Decode for SmartcardKey {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct KeyConstraint {
-    pub constraint_type: u8,
-    pub constraint_data: Vec<u8>,
+pub enum KeyConstraint {
+    Lifetime(u32),
+    Confirm,
+    Extension(String, Vec<u8>),
 }
 
 impl Decode for KeyConstraint {
@@ -158,11 +161,12 @@ impl Decode for KeyConstraint {
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let constraint_type = u8::decode(reader)?;
-        let constraint_data = Vec::decode(reader)?;
-
-        Ok(Self {
-            constraint_type,
-            constraint_data,
+        // see: https://www.ietf.org/archive/id/draft-miller-ssh-agent-12.html#section-5.2
+        Ok(match constraint_type {
+            1 => KeyConstraint::Lifetime(u32::decode(reader)?),
+            2 => KeyConstraint::Confirm,
+            255 => KeyConstraint::Extension(String::decode(reader)?, Vec::<u8>::decode(reader)?),
+            _ => return Err(Error::AlgorithmUnknown), // FIXME: it should be our own type
         })
     }
 }
