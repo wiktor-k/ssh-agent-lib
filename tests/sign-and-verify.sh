@@ -24,6 +24,8 @@ rm -rf Cargo.toml.sig id_rsa.pub agent.pub
 export SSH_ASKPASS=`pwd`/tests/pwd-test.sh
 # AddSmartcardKey
 echo | ssh-add -s test
+# AddSmartcardKeyConstrained
+echo | ssh-add -c -t 4 -s test
 # Lock
 echo | ssh-add -x
 # Unlock

@@ -156,6 +156,10 @@ impl KeyStorage {
                 println!("Adding smartcard key: {key:?}");
                 Ok(Message::Success)
             }
+            Message::AddSmartcardKeyConstrained(key) => {
+                println!("Adding smartcard key with constraints: {key:?}");
+                Ok(Message::Success)
+            }
             Message::Lock(pwd) => {
                 println!("Locked with password: {pwd:?}");
                 Ok(Message::Success)
