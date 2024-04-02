@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use log::info;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener;
+use ssh_agent_lib::proto::extension::SessionBind;
 #[cfg(not(windows))]
 use tokio::net::UnixListener;
 
@@ -166,6 +167,14 @@ impl KeyStorage {
             }
             Message::Unlock(pwd) => {
                 println!("Unlocked with password: {pwd:?}");
+                Ok(Message::Success)
+            }
+            Message::Extension(mut extension) => {
+                eprintln!("Extension: {extension:?}");
+                if extension.name == "session-bind@openssh.com" {
+                    let bind = extension.details.parse::<SessionBind>()?;
+                    eprintln!("Bind: {bind:?}");
+                }
                 Ok(Message::Success)
             }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),

@@ -193,23 +193,42 @@ impl Decode for AddSmartcardKeyConstrained {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Extension {
-    pub extension_type: String,
-    pub extension_contents: ExtensionContents,
+    pub name: String,
+    pub details: Unparsed,
 }
 
 impl Decode for Extension {
     type Error = Error;
 
-    fn decode(_reader: &mut impl Reader) -> Result<Self> {
-        todo!()
-        //let key = SmartcardKey::decode(reader)?;
-        //let constraints = Vec::decode(reader)?;
-
-        //Ok(Self { key, constraints })
+    fn decode(reader: &mut impl Reader) -> Result<Self> {
+        let name = String::decode(reader)?;
+        let mut details = vec![0; reader.remaining_len()];
+        reader.read(&mut details)?;
+        Ok(Self {
+            name,
+            details: details.into(),
+        })
     }
 }
+
 #[derive(Debug, PartialEq, Clone)]
-pub struct ExtensionContents(pub Vec<u8>);
+pub struct Unparsed(Vec<u8>);
+
+impl Unparsed {
+    pub fn parse<T>(&mut self) -> std::result::Result<T, <T as Decode>::Error>
+    where
+        T: Decode,
+    {
+        let mut v = &self.0[..];
+        T::decode(&mut v)
+    }
+}
+
+impl From<Vec<u8>> for Unparsed {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
 
 pub type Passphrase = String;
 

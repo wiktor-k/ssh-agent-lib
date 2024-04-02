@@ -7,6 +7,8 @@ pub enum ProtoError {
     MessageTooLong,
     StringEncoding(string::FromUtf8Error),
     IO(io::Error),
+    SshEncoding(ssh_encoding::Error),
+    SshKey(ssh_key::Error),
 }
 
 impl From<ProtoError> for () {
@@ -16,6 +18,18 @@ impl From<ProtoError> for () {
 impl From<io::Error> for ProtoError {
     fn from(e: io::Error) -> ProtoError {
         ProtoError::IO(e)
+    }
+}
+
+impl From<ssh_encoding::Error> for ProtoError {
+    fn from(e: ssh_encoding::Error) -> ProtoError {
+        ProtoError::SshEncoding(e)
+    }
+}
+
+impl From<ssh_key::Error> for ProtoError {
+    fn from(e: ssh_key::Error) -> ProtoError {
+        ProtoError::SshKey(e)
     }
 }
 
@@ -32,6 +46,8 @@ impl std::error::Error for ProtoError {
             ProtoError::MessageTooLong => None,
             ProtoError::StringEncoding(e) => Some(e),
             ProtoError::IO(e) => Some(e),
+            ProtoError::SshEncoding(e) => Some(e),
+            ProtoError::SshKey(e) => Some(e),
         }
     }
 }
@@ -43,6 +59,8 @@ impl std::fmt::Display for ProtoError {
             ProtoError::MessageTooLong => f.write_str("Message too long"),
             ProtoError::StringEncoding(_) => f.write_str("String encoding failed"),
             ProtoError::IO(_) => f.write_str("I/O Error"),
+            ProtoError::SshEncoding(_) => f.write_str("SSH encoding Error"),
+            ProtoError::SshKey(e) => write!(f, "SSH key Error: {e}"),
         }
     }
 }
