@@ -168,6 +168,10 @@ impl KeyStorage {
                 println!("Unlocked with password: {pwd:?}");
                 Ok(Message::Success)
             }
+            Message::Extension(extension) => {
+                eprintln!("Extension: {extension:?}");
+                Ok(Message::Success)
+            }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
         };
         info!("Response {:?}", response);

@@ -193,19 +193,23 @@ impl Decode for AddSmartcardKeyConstrained {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Extension {
-    pub extension_type: String,
-    pub extension_contents: ExtensionContents,
+    pub name: String,
+    pub details: Vec<u8>,
 }
 
 impl Decode for Extension {
     type Error = Error;
 
-    fn decode(_reader: &mut impl Reader) -> Result<Self> {
+    fn decode(reader: &mut impl Reader) -> Result<Self> {
+        let name = String::decode(reader)?;
+        while !reader.is_finished() {
+            //constraints.push(KeyConstraint::decode(reader)?);
+            print!("{} ", u8::decode(reader)?);
+        }
+        println!("bytes");
         todo!()
-        //let key = SmartcardKey::decode(reader)?;
-        //let constraints = Vec::decode(reader)?;
-
-        //Ok(Self { key, constraints })
+        //let details = Vec::decode(reader)?;
+        //Ok(Self { name, details })
     }
 }
 #[derive(Debug, PartialEq, Clone)]
