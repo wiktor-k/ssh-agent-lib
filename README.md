@@ -14,9 +14,9 @@ On Unix it uses `ssh-agent.sock` Unix domain socket while on Windows it uses a n
 
 ```rust,no_run
 #[cfg(not(windows))]
-use tokio::net::UnixListener;
+use tokio::net::UnixListener as Listener;
 #[cfg(windows)]
-use ssh_agent_lib::agent::NamedPipeListener;
+use ssh_agent_lib::agent::NamedPipeListener as Listener;
 
 use ssh_agent_lib::agent::{Session, Agent};
 use ssh_agent_lib::proto::message::Message;
@@ -43,19 +43,15 @@ impl Session for MyAgent {
 }
 
 #[tokio::main]
-#[cfg(not(windows))]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(not(windows))]
     let socket = "ssh-agent.sock";
+    #[cfg(windows)]
+    let socket = r"\\.\pipe\agent";
+
     let _ = std::fs::remove_file(socket); // remove the socket if exists
 
-    MyAgent.listen(UnixListener::bind(socket)?).await?;
-    Ok(())
-}
-
-#[tokio::main]
-#[cfg(windows)]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    MyAgent.listen(NamedPipeListener::new(r"\\.\pipe\agent".into())?).await?;
+    MyAgent.listen(Listener::bind(socket)?).await?;
     Ok(())
 }
 ```
