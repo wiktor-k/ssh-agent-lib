@@ -32,6 +32,90 @@ impl Decode for SessionBind {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct RestrictDestination {
+    pub constraints: Vec<DestinationConstraint>,
+}
+
+impl Decode for RestrictDestination {
+    type Error = crate::proto::error::ProtoError;
+
+    fn decode(reader: &mut impl Reader) -> Result<Self, Self::Error> {
+        eprintln!("encoding {}", u32::decode(reader)?);
+        let mut constraints = Vec::new();
+        while !reader.is_finished() {
+            eprintln!("encoding");
+            constraints.push(reader.read_prefixed(DestinationConstraint::decode)?);
+        }
+        Ok(Self { constraints })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DestinationConstraint {
+    pub from_username: String,
+    pub from_hostname: String,
+    pub from_hostkeys: Vec<KeySpec>,
+    pub to_username: String,
+    pub to_hostname: String,
+    pub to_hostkeys: Vec<KeySpec>,
+}
+
+impl Decode for DestinationConstraint {
+    type Error = crate::proto::error::ProtoError;
+
+    fn decode(reader: &mut impl Reader) -> Result<Self, Self::Error> {
+        //eprintln!("before: {}", u32::decode(reader)?);
+        let from_username = String::decode(reader)?;
+        eprintln!("from username: {from_username} {}", from_username.len());
+        eprintln!("before: {}", u32::decode(reader)?);
+        let from_hostname = String::decode(reader)?;
+        eprintln!("from hostname: {from_hostname}");
+        let from_hostkeys = reader.read_prefixed(|reader| {
+            let mut keys = Vec::new();
+            while !reader.is_finished() {
+                keys.push(KeySpec::decode(reader)?);
+            }
+            Ok::<_, crate::proto::error::ProtoError>(keys)
+        })?;
+        let to_username = String::decode(reader)?;
+        let to_hostname = String::decode(reader)?;
+        let to_hostkeys = reader.read_prefixed(|reader| {
+            let mut keys = Vec::new();
+            while !reader.is_finished() {
+                keys.push(KeySpec::decode(reader)?);
+            }
+            Ok::<_, crate::proto::error::ProtoError>(keys)
+        })?;
+        Ok(Self {
+            from_username,
+            from_hostname,
+            from_hostkeys,
+            to_username,
+            to_hostname,
+            to_hostkeys,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct KeySpec {
+    pub keyblob: KeyData,
+    pub is_ca: bool,
+}
+
+impl Decode for KeySpec {
+    type Error = crate::proto::error::ProtoError;
+
+    fn decode(reader: &mut impl Reader) -> Result<Self, Self::Error> {
+        let keyblob = reader.read_prefixed(KeyData::decode)?;
+        Ok(Self {
+            keyblob,
+            is_ca: u8::decode(reader)? != 0,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,6 +136,36 @@ mod tests {
         ];
         let bind = SessionBind::decode(&mut buffer)?;
         eprintln!("Bind: {bind:#?}");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_destination_constraint() -> TestResult {
+        let mut buffer: &[u8] = &[
+            0, 0, 0, 114, //
+            0, 0, 0, 110, //
+            0, 0, 0, 12, //from:
+            0, 0, 0, 0, //username
+            0, 0, 0, 0, //hostname
+            0, 0, 0, 0, //reserved
+            // no host keys here
+            0, 0, 0, 86, //to:
+            0, 0, 0, 6, 119, 105, 107, 116, 111, 114, // wiktor
+            0, 0, 0, 12, 109, 101, 116, 97, 99, 111, 100, 101, 46, 98, 105,
+            122, // metacode.biz
+            0, 0, 0, 0, // reserved, not in the spec authfd.c:469
+            0, 0, 0, 51, //
+            0, 0, 0, 11, //
+            115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, //ssh-ed25519
+            0, 0, 0, 32, // raw key
+            177, 185, 198, 92, 165, 45, 127, 95, 202, 195, 226, 63, 6, 115, 10, 104, 18, 137, 172,
+            240, 153, 154, 174, 74, 83, 7, 1, 204, 14, 177, 153, 40, //
+            0,  // is_ca
+            0, 0, 0, 0, // reserved, not in the spec, authfd.c:495
+        ];
+
+        let destination_constraint = RestrictDestination::decode(&mut buffer)?;
+        eprintln!("Destination constraint: {destination_constraint:?}");
         Ok(())
     }
 }

@@ -198,7 +198,7 @@ impl Decode for SmartcardKey {
 pub enum KeyConstraint {
     Lifetime(u32),
     Confirm,
-    Extension(String, Vec<u8>),
+    Extension(String, Unparsed),
 }
 
 impl Decode for KeyConstraint {
@@ -210,7 +210,12 @@ impl Decode for KeyConstraint {
         Ok(match constraint_type {
             1 => KeyConstraint::Lifetime(u32::decode(reader)?),
             2 => KeyConstraint::Confirm,
-            255 => KeyConstraint::Extension(String::decode(reader)?, Vec::<u8>::decode(reader)?),
+            255 => {
+                let name = String::decode(reader)?;
+                let mut details = vec![0; reader.remaining_len()];
+                reader.read(&mut details)?;
+                KeyConstraint::Extension(name, details.into())
+            }
             _ => return Err(Error::AlgorithmUnknown), // FIXME: it should be our own type
         })
     }
@@ -589,7 +594,8 @@ mod tests {
             4db0 d166 7660 1ffe f93a 6872 4800 0000
             0000"
                 )
-                .to_vec(),
+                .to_vec()
+                .into(),
             )],
         };
 

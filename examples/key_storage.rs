@@ -8,7 +8,7 @@ use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
-use ssh_agent_lib::proto::{signature, AddIdentityConstrained};
+use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
 use ssh_key::{
     private::{KeypairData, PrivateKey},
     public::PublicKey,
@@ -141,6 +141,15 @@ impl KeyStorage {
                 constraints,
             }) => {
                 eprintln!("Would use these constraints: {constraints:#?}");
+                for constraint in constraints {
+                    if let KeyConstraint::Extension(name, mut details) = constraint {
+                        if name == "restrict-destination-v00@openssh.com" {
+                            if let Ok(destination_constraint) = details.parse::<SessionBind>() {
+                                eprintln!("Destination constraint: {destination_constraint:?}");
+                            }
+                        }
+                    }
+                }
                 let privkey = PrivateKey::try_from(identity.privkey).unwrap();
                 self.identity_add(Identity {
                     pubkey: PublicKey::from(&privkey),
