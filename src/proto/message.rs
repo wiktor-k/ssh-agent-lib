@@ -1,4 +1,4 @@
-use ssh_encoding::{CheckedSum, Decode, Encode, Reader, Writer};
+use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
 use ssh_key::{private::KeypairData, public::KeyData, Error, Result, Signature};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -107,6 +107,18 @@ impl Decode for AddIdentity {
     }
 }
 
+impl Encode for AddIdentity {
+    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
+        [self.privkey.encoded_len()?, self.comment.encoded_len()?].checked_sum()
+    }
+
+    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
+        self.privkey.encode(writer)?;
+        self.comment.encode(writer)?;
+        Ok(())
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentityConstrained {
     pub identity: AddIdentity,
@@ -128,6 +140,25 @@ impl Decode for AddIdentityConstrained {
             identity,
             constraints,
         })
+    }
+}
+
+impl Encode for AddIdentityConstrained {
+    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
+        self.constraints
+            .iter()
+            .try_fold(self.identity.encoded_len()?, |acc, e| {
+                let constraint_len = e.encoded_len()?;
+                usize::checked_add(acc, constraint_len).ok_or(EncodingError::Length)
+            })
+    }
+
+    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
+        self.identity.encode(writer)?;
+        for constraint in &self.constraints {
+            constraint.encode(writer)?;
+        }
+        Ok(())
     }
 }
 
@@ -182,6 +213,37 @@ impl Decode for KeyConstraint {
             255 => KeyConstraint::Extension(String::decode(reader)?, Vec::<u8>::decode(reader)?),
             _ => return Err(Error::AlgorithmUnknown), // FIXME: it should be our own type
         })
+    }
+}
+
+impl Encode for KeyConstraint {
+    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
+        let base = u8::MAX.encoded_len()?;
+
+        match self {
+            Self::Lifetime(lifetime) => base
+                .checked_add(lifetime.encoded_len()?)
+                .ok_or(EncodingError::Length),
+            Self::Confirm => Ok(base),
+            Self::Extension(name, content) => {
+                [base, name.encoded_len()?, content.encoded_len()?].checked_sum()
+            }
+        }
+    }
+
+    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
+        match self {
+            Self::Lifetime(lifetime) => {
+                1u8.encode(writer)?;
+                lifetime.encode(writer)
+            }
+            Self::Confirm => 2u8.encode(writer),
+            Self::Extension(name, content) => {
+                255u8.encode(writer)?;
+                name.encode(writer)?;
+                content.encode(writer)
+            }
+        }
     }
 }
 
@@ -403,16 +465,18 @@ mod tests {
 
         let out = AddIdentityConstrained::decode(&mut reader).unwrap();
 
-        assert_eq!(
-            out,
-            AddIdentityConstrained {
-                identity: AddIdentity {
-                    privkey: KeypairData::Ecdsa(demo_key()),
-                    comment: "baloo@angela".to_string()
-                },
-                constraints: vec![KeyConstraint::Lifetime(2)],
-            }
-        );
+        let expected = AddIdentityConstrained {
+            identity: AddIdentity {
+                privkey: KeypairData::Ecdsa(demo_key()),
+                comment: "baloo@angela".to_string(),
+            },
+            constraints: vec![KeyConstraint::Lifetime(2)],
+        };
+        assert_eq!(out, expected);
+
+        let mut buf = vec![];
+        expected.encode(&mut buf).expect("serialize message");
+        assert_eq!(buf, msg);
 
         let msg: &[u8] = &hex!(
             "
@@ -474,17 +538,15 @@ mod tests {
 
         let out = AddIdentityConstrained::decode(&mut reader).unwrap();
 
-        assert_eq!(
-            out,
-            AddIdentityConstrained {
-                identity: AddIdentity {
-                    privkey: KeypairData::Ecdsa(demo_key()),
-                    comment: "baloo@angela".to_string()
-                },
-                constraints: vec![KeyConstraint::Extension(
-                    "restrict-destination-v00@openssh.com".to_string(),
-                    hex!(
-                        "
+        let expected = AddIdentityConstrained {
+            identity: AddIdentity {
+                privkey: KeypairData::Ecdsa(demo_key()),
+                comment: "baloo@angela".to_string(),
+            },
+            constraints: vec![KeyConstraint::Extension(
+                "restrict-destination-v00@openssh.com".to_string(),
+                hex!(
+                    "
                                                  00
             0002 6f00 0000 0c00 0000 0000 0000 0000
             0000 0000 0002 5700 0000 0000 0000 0a67
@@ -526,11 +588,16 @@ mod tests {
             83a0 8bad ba39 c007 53ff 2eaf d262 95d1
             4db0 d166 7660 1ffe f93a 6872 4800 0000
             0000"
-                    )
-                    .to_vec()
-                )],
-            }
-        );
+                )
+                .to_vec(),
+            )],
+        };
+
+        assert_eq!(out, expected);
+
+        let mut buf = vec![];
+        expected.encode(&mut buf).expect("serialize message");
+        assert_eq!(buf, msg);
     }
 
     #[test]
@@ -554,13 +621,15 @@ mod tests {
 
         let out = AddIdentity::decode(&mut reader).expect("parse message");
 
-        assert_eq!(
-            out,
-            AddIdentity {
-                privkey: KeypairData::Ecdsa(demo_key()),
-                comment: "baloo@angela".to_string()
-            }
-        );
+        let expected = AddIdentity {
+            privkey: KeypairData::Ecdsa(demo_key()),
+            comment: "baloo@angela".to_string(),
+        };
+        assert_eq!(out, expected);
+
+        let mut buf = vec![];
+        expected.encode(&mut buf).expect("serialize message");
+        assert_eq!(buf, msg);
     }
 
     #[test]
@@ -581,12 +650,14 @@ mod tests {
 
         let out = Message::decode(&mut reader).expect("parse message");
 
-        assert_eq!(
-            out,
-            Message::IdentitiesAnswer(vec![Identity {
-                pubkey: KeyData::Ecdsa(demo_key().into()),
-                comment: "baloo@angela".to_string()
-            }]),
-        );
+        let expected = Message::IdentitiesAnswer(vec![Identity {
+            pubkey: KeyData::Ecdsa(demo_key().into()),
+            comment: "baloo@angela".to_string(),
+        }]);
+        assert_eq!(out, expected);
+
+        let mut buf = vec![];
+        expected.encode(&mut buf).expect("serialize message");
+        assert_eq!(buf, msg);
     }
 }
