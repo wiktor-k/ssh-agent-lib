@@ -7,6 +7,19 @@ pub struct Identity {
     pub comment: String,
 }
 
+impl Identity {
+    fn decode_vec(reader: &mut impl Reader) -> Result<Vec<Self>> {
+        let len = u32::decode(reader)?;
+        let mut identities = vec![];
+
+        for _ in 0..len {
+            identities.push(Self::decode(reader)?);
+        }
+
+        Ok(identities)
+    }
+}
+
 impl Decode for Identity {
     type Error = Error;
 
@@ -264,7 +277,7 @@ impl Decode for Message {
             5 => Ok(Self::Failure),
             6 => Ok(Self::Success),
             11 => Ok(Self::RequestIdentities),
-            12 => todo!(),
+            12 => Identity::decode_vec(reader).map(Self::IdentitiesAnswer),
             13 => SignRequest::decode(reader).map(Self::SignRequest),
             14 => Signature::decode(reader).map(Self::SignResponse),
             17 => AddIdentity::decode(reader).map(Self::AddIdentity),
@@ -547,6 +560,33 @@ mod tests {
                 privkey: KeypairData::Ecdsa(demo_key()),
                 comment: "baloo@angela".to_string()
             }
+        );
+    }
+
+    #[test]
+    fn test_parse_identities() {
+        let msg: &[u8] = &hex!(
+            "
+            0c000000010000006800000013656364
+            73612d736861322d6e69737470323536
+            000000086e6973747032353600000041
+            04cb244fcdb89de95bc8fd766e6b139a
+            bfc2649fb063b6c5e5a939e067e2a0d2
+            150a660daca78f6c24a0425373d6ea83
+            e36f8a1f8b828a60e77a97a9441bcc09
+            870000000c62616c6f6f40616e67656c
+            61"
+        );
+        let mut reader = msg;
+
+        let out = Message::decode(&mut reader).expect("parse message");
+
+        assert_eq!(
+            out,
+            Message::IdentitiesAnswer(vec![Identity {
+                pubkey: KeyData::Ecdsa(demo_key().into()),
+                comment: "baloo@angela".to_string()
+            }]),
         );
     }
 }
