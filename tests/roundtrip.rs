@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use testresult::TestResult;
 
 #[rstest]
-fn main(#[files("tests/messages/*.bin")] path: PathBuf) -> TestResult {
+fn roundtrip(#[files("tests/messages/*.bin")] path: PathBuf) -> TestResult {
     let serialized = std::fs::read(path)?;
     let mut bytes: &[u8] = &serialized;
     let message = Message::decode(&mut bytes)?;
