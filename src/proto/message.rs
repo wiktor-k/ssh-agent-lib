@@ -239,8 +239,7 @@ impl Decode for KeyConstraint {
             2 => KeyConstraint::Confirm,
             255 => {
                 let name = String::decode(reader)?;
-                let mut details = vec![0; reader.remaining_len()];
-                reader.read(&mut details)?;
+                let details: Vec<u8> = Vec::decode(reader)?;
                 KeyConstraint::Extension(name, details.into())
             }
             _ => return Err(Error::AlgorithmUnknown)?, // FIXME: it should be our own type
@@ -560,7 +559,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "temporarily disable until test vectors are updated"]
     fn test_add_identity_constrained() {
         let msg: &[u8] = &hex!(
             "
