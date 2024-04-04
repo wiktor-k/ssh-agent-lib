@@ -54,7 +54,22 @@ jobs:
       - run: cargo install --locked just
       - name: Run unit tests
         run: just tests
-       
+
+  deps:
+    name: Check dependencies
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+        - os: macos-latest
+        - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo install --locked just cargo-deny
+      - name: Run unit tests
+        run: just dependencies
+
   lints:
     name: Clippy lints
     strategy:
