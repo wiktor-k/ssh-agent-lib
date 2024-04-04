@@ -2,8 +2,7 @@
 
 set -euxo pipefail
 
-rm -rf ssh-agent.sock Cargo.toml.sig id_rsa id_rsa.pub agent.pub
-
+rm -rf ssh-agent.sock Cargo.toml.sig id_rsa id_rsa.pub agent.pub ca_user_key ca_user_key.pub id_rsa-cert.pub
 cargo run --example key_storage &
 
 while [ ! -e ssh-agent.sock ]; do
@@ -18,7 +17,7 @@ ssh-add -L | tee agent.pub
 ssh-keygen -Y sign -f agent.pub -n file < Cargo.toml > Cargo.toml.sig
 ssh-keygen -Y check-novalidate -n file -f agent.pub -s Cargo.toml.sig < Cargo.toml
 
-rm -rf Cargo.toml.sig id_rsa.pub agent.pub
+rm -rf Cargo.toml.sig agent.pub
 
 # Test other commands:
 export SSH_ASKPASS=`pwd`/tests/pwd-test.sh
@@ -33,5 +32,15 @@ echo | ssh-add -X
 # AddIdConstrained
 ssh-add -t 2 id_rsa
 
+rm -rf id_rsa id_rsa.pub
+
+# Create and sign SSH user certificate
+# see: https://cottonlinux.com/ssh-certificates/
+echo | ssh-keygen -f ca_user_key
+ssh-keygen -t rsa -f id_rsa -N ""
+echo | ssh-keygen -s ca_user_key -I darren -n darren -V +1h -z 1 id_rsa.pub
+# Add the key with the cert
+ssh-add -t 2 id_rsa
+
 # clean up the only leftover
-rm -rf id_rsa
+rm -rf id_rsa id_rsa.pub id_rsa-cert.pub ca_user_key ca_user_key.pub
