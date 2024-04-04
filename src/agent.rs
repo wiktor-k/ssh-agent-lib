@@ -18,7 +18,7 @@ use std::marker::Unpin;
 use std::mem::size_of;
 
 use super::error::AgentError;
-use super::proto::message::Message;
+use super::proto::{message::Message, ProtoError};
 
 #[derive(Debug)]
 pub struct MessageCodec;
@@ -40,11 +40,6 @@ impl Decoder for MessageCodec {
             return Ok(None);
         }
 
-        //use std::io::Write;
-        //let mut file = std::fs::File::create(uuid::Uuid::new_v4().to_string())?;
-        //file.write_all(bytes)?;
-        //drop(file);
-
         let message: Message = Message::decode(&mut bytes)?;
         src.advance(size_of::<u32>() + length);
         Ok(Some(message))
@@ -58,16 +53,10 @@ impl Encoder<Message> for MessageCodec {
         let mut bytes = Vec::new();
 
         let len = item.encoded_len().unwrap() as u32;
-        len.encode(&mut bytes)?;
+        len.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
 
-        item.encode(&mut bytes)?;
+        item.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
         dst.put(&*bytes);
-        //use std::io::Write;
-        //let mut file = std::fs::File::create(uuid::Uuid::new_v4().to_string())?;
-        //let mut bytes = Vec::new();
-        //item.encode(&mut bytes)?;
-        //file.write_all(&bytes)?;
-        //drop(file);
 
         Ok(())
     }

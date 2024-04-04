@@ -9,6 +9,7 @@ pub enum ProtoError {
     IO(io::Error),
     SshEncoding(ssh_encoding::Error),
     SshKey(ssh_key::Error),
+    UnsupportedCommand { command: u8 },
 }
 
 impl From<ProtoError> for () {
@@ -48,6 +49,7 @@ impl std::error::Error for ProtoError {
             ProtoError::IO(e) => Some(e),
             ProtoError::SshEncoding(e) => Some(e),
             ProtoError::SshKey(e) => Some(e),
+            ProtoError::UnsupportedCommand { .. } => None,
         }
     }
 }
@@ -61,6 +63,9 @@ impl std::fmt::Display for ProtoError {
             ProtoError::IO(_) => f.write_str("I/O Error"),
             ProtoError::SshEncoding(_) => f.write_str("SSH encoding Error"),
             ProtoError::SshKey(e) => write!(f, "SSH key Error: {e}"),
+            ProtoError::UnsupportedCommand { command } => {
+                write!(f, "Command not supported ({command})")
+            }
         }
     }
 }

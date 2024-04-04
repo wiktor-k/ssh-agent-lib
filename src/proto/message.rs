@@ -1,5 +1,9 @@
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
-use ssh_key::{private::KeypairData, public::KeyData, Error, Result, Signature};
+use ssh_key::{private::KeypairData, public::KeyData, Error, Signature};
+
+use super::ProtoError;
+
+type Result<T> = core::result::Result<T, ProtoError>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Identity {
@@ -21,7 +25,7 @@ impl Identity {
 }
 
 impl Decode for Identity {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let pubkey = reader.read_prefixed(KeyData::decode)?;
@@ -56,7 +60,7 @@ pub struct SignRequest {
 }
 
 impl Decode for SignRequest {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let pubkey = reader.read_prefixed(KeyData::decode)?;
@@ -97,7 +101,7 @@ pub struct AddIdentity {
 }
 
 impl Decode for AddIdentity {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let privkey = KeypairData::decode(reader)?;
@@ -126,7 +130,7 @@ pub struct AddIdentityConstrained {
 }
 
 impl Decode for AddIdentityConstrained {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let identity = AddIdentity::decode(reader)?;
@@ -168,7 +172,7 @@ pub struct RemoveIdentity {
 }
 
 impl Decode for RemoveIdentity {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let pubkey = reader.read_prefixed(KeyData::decode)?;
@@ -194,7 +198,7 @@ pub struct SmartcardKey {
 }
 
 impl Decode for SmartcardKey {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let id = String::decode(reader)?;
@@ -225,7 +229,7 @@ pub enum KeyConstraint {
 }
 
 impl Decode for KeyConstraint {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let constraint_type = u8::decode(reader)?;
@@ -239,7 +243,7 @@ impl Decode for KeyConstraint {
                 reader.read(&mut details)?;
                 KeyConstraint::Extension(name, details.into())
             }
-            _ => return Err(Error::AlgorithmUnknown), // FIXME: it should be our own type
+            _ => return Err(Error::AlgorithmUnknown)?, // FIXME: it should be our own type
         })
     }
 }
@@ -282,7 +286,7 @@ pub struct AddSmartcardKeyConstrained {
 }
 
 impl Decode for AddSmartcardKeyConstrained {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let key = SmartcardKey::decode(reader)?;
@@ -321,7 +325,7 @@ pub struct Extension {
 }
 
 impl Decode for Extension {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let name = String::decode(reader)?;
@@ -425,7 +429,7 @@ impl Message {
 }
 
 impl Decode for Message {
-    type Error = Error;
+    type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let message_type = u8::decode(reader)?;
@@ -436,7 +440,10 @@ impl Decode for Message {
             11 => Ok(Self::RequestIdentities),
             12 => Identity::decode_vec(reader).map(Self::IdentitiesAnswer),
             13 => SignRequest::decode(reader).map(Self::SignRequest),
-            14 => reader.read_prefixed(|reader| Signature::decode(reader).map(Self::SignResponse)),
+            14 => {
+                Ok(reader
+                    .read_prefixed(|reader| Signature::decode(reader).map(Self::SignResponse))?)
+            }
             17 => AddIdentity::decode(reader).map(Self::AddIdentity),
             18 => RemoveIdentity::decode(reader).map(Self::RemoveIdentity),
             19 => Ok(Self::RemoveAllIdentities),
@@ -448,7 +455,7 @@ impl Decode for Message {
             26 => AddSmartcardKeyConstrained::decode(reader).map(Self::AddSmartcardKeyConstrained),
             27 => Extension::decode(reader).map(Self::Extension),
             28 => Ok(Self::ExtensionFailure),
-            _ => todo!(),
+            command => Err(ProtoError::UnsupportedCommand { command }),
         }
     }
 }
