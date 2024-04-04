@@ -40,6 +40,11 @@ impl Decoder for MessageCodec {
             return Ok(None);
         }
 
+        //use std::io::Write;
+        //let mut file = std::fs::File::create(uuid::Uuid::new_v4().to_string())?;
+        //file.write_all(bytes)?;
+        //drop(file);
+
         let message: Message = Message::decode(&mut bytes)?;
         src.advance(size_of::<u32>() + length);
         Ok(Some(message))

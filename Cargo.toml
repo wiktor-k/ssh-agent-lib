@@ -25,6 +25,7 @@ tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
 service-binding = { version = "^2" }
 ssh-encoding = { version = "0.2.0" }
 ssh-key = { version = "0.6.4", features = ["rsa", "alloc"] }
+#uuid = { version = "1.8.0", features = ["v4"] }
 
 [features]
 default = ["agent"]
@@ -45,3 +46,4 @@ hex-literal = "0.4.1"
 ssh-key = { version = "0.6.4", features = ["p256"] }
 p256 = { version = "0.13.2" }
 const-str = "0.5.7"
+rstest = "0.18.2"
