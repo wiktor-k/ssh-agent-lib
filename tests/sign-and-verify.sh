@@ -32,3 +32,6 @@ echo | ssh-add -x
 echo | ssh-add -X
 # AddIdConstrained
 ssh-add -t 2 id_rsa
+
+# clean up the only leftover
+rm -rf id_rsa

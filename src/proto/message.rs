@@ -436,7 +436,7 @@ impl Decode for Message {
             11 => Ok(Self::RequestIdentities),
             12 => Identity::decode_vec(reader).map(Self::IdentitiesAnswer),
             13 => SignRequest::decode(reader).map(Self::SignRequest),
-            14 => Signature::decode(reader).map(Self::SignResponse),
+            14 => reader.read_prefixed(|reader| Signature::decode(reader).map(Self::SignResponse)),
             17 => AddIdentity::decode(reader).map(Self::AddIdentity),
             18 => RemoveIdentity::decode(reader).map(Self::RemoveIdentity),
             19 => Ok(Self::RemoveAllIdentities),

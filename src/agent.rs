@@ -61,8 +61,14 @@ impl Encoder<Message> for MessageCodec {
         len.encode(&mut bytes)?;
 
         item.encode(&mut bytes)?;
-
         dst.put(&*bytes);
+        //use std::io::Write;
+        //let mut file = std::fs::File::create(uuid::Uuid::new_v4().to_string())?;
+        //let mut bytes = Vec::new();
+        //item.encode(&mut bytes)?;
+        //file.write_all(&bytes)?;
+        //drop(file);
+
         Ok(())
     }
 }
