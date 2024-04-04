@@ -1,0 +1,5 @@
+# CHECK: https://github.com/rust-lang/rustfmt/issues/5083 state == open
+group_imports = "StdExternalCrate"
+
+# CHECK: https://github.com/rust-lang/rustfmt/issues/3348 state == open
+format_code_in_doc_comments = true

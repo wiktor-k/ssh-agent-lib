@@ -1,12 +1,17 @@
+use std::error::Error;
+use std::sync::{Arc, Mutex};
+
 use async_trait::async_trait;
 use log::info;
+use rsa::pkcs1v15::SigningKey;
+use rsa::sha2::{Sha256, Sha512};
+use rsa::signature::{RandomizedSigner, SignatureEncoding};
+use rsa::BigUint;
+use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
-use ssh_agent_lib::proto::extension::SessionBind;
-#[cfg(not(windows))]
-use tokio::net::UnixListener as Listener;
-
 use ssh_agent_lib::agent::{Agent, Session};
+use ssh_agent_lib::proto::extension::SessionBind;
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
 use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
 use ssh_key::{
@@ -14,15 +19,8 @@ use ssh_key::{
     public::PublicKey,
     Algorithm, Signature,
 };
-
-use std::error::Error;
-use std::sync::{Arc, Mutex};
-
-use rsa::pkcs1v15::SigningKey;
-use rsa::sha2::{Sha256, Sha512};
-use rsa::signature::{RandomizedSigner, SignatureEncoding};
-use rsa::BigUint;
-use sha1::Sha1;
+#[cfg(not(windows))]
+use tokio::net::UnixListener as Listener;
 
 #[derive(Clone, PartialEq, Debug)]
 struct Identity {
@@ -79,9 +77,9 @@ impl KeyStorage {
                     let algorithm;
 
                     let private_key = rsa::RsaPrivateKey::from_components(
-                        BigUint::from_bytes_be(&key.public.n.as_bytes()),
-                        BigUint::from_bytes_be(&key.public.e.as_bytes()),
-                        BigUint::from_bytes_be(&key.private.d.as_bytes()),
+                        BigUint::from_bytes_be(key.public.n.as_bytes()),
+                        BigUint::from_bytes_be(key.public.e.as_bytes()),
+                        BigUint::from_bytes_be(key.private.d.as_bytes()),
                         vec![],
                     )?;
                     let mut rng = rand::thread_rng();

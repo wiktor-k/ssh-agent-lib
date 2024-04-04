@@ -1,7 +1,8 @@
+use std::path::PathBuf;
+
 use rstest::rstest;
 use ssh_agent_lib::proto::Message;
 use ssh_encoding::{Decode, Encode};
-use std::path::PathBuf;
 use testresult::TestResult;
 
 #[rstest]
