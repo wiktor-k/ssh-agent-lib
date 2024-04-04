@@ -64,6 +64,9 @@ jobs:
 
   integration:
     name: Integration tests
+    # If starting the example fails at runtime the integration test will
+    # be stuck. Try to limit the damage. The value "10" selected arbitrarily.
+    timeout-minutes: 10
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest ]
@@ -73,6 +76,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      # If the example doesn't compile the integration test will
+      # be stuck. Check for compilation issues earlier to abort the job
+      - name: Check if the example compiles
+        run: cargo check --example key_storage
       - name: Run integration tests
         run: ./tests/sign-and-verify.sh
         if: ${{ ! matrix.windows }}
