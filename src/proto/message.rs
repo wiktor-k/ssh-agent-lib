@@ -311,6 +311,16 @@ impl From<Vec<u8>> for Unparsed {
     }
 }
 
+impl Encode for Unparsed {
+    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
+        self.0.encoded_len()
+    }
+
+    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
+        self.0.encode(writer)
+    }
+}
+
 pub type Passphrase = String;
 
 #[derive(Clone, PartialEq, Debug)]
