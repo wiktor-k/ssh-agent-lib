@@ -92,7 +92,8 @@ pub struct NamedPipeListener(NamedPipeServer, std::ffi::OsString);
 
 #[cfg(windows)]
 impl NamedPipeListener {
-    pub fn new(pipe: std::ffi::OsString) -> std::io::Result<Self> {
+    pub fn bind(pipe: impl Into<std::ffi::OsString>) -> std::io::Result<Self> {
+        let pipe = pipe.into();
         Ok(NamedPipeListener(
             ServerOptions::new()
                 .first_pipe_instance(true)
@@ -185,7 +186,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
             }
             #[cfg(windows)]
             service_binding::Listener::NamedPipe(pipe) => {
-                self.listen(NamedPipeListener::new(pipe)?).await
+                self.listen(NamedPipeListener::bind(pipe)?).await
             }
             #[cfg(not(windows))]
             service_binding::Listener::NamedPipe(_) => Err(AgentError::IO(std::io::Error::other(
