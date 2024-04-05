@@ -27,9 +27,10 @@ tokio = { version = "1", optional = true, features = ["rt", "net"] }
 tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
 service-binding = { version = "^2" }
 ssh-encoding = { version = "0.2.0" }
-ssh-key = { version = "0.6.4", features = ["rsa", "alloc"] }
+ssh-key = { version = "0.6.6", features = ["rsa", "alloc"] }
 thiserror = "1.0.58"
 #uuid = { version = "1.8.0", features = ["v4"] }
+subtle = { version = "2", default-features = false }
 
 [features]
 default = ["agent"]
@@ -47,7 +48,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 sha1 = { version = "0.10.5", default-features = false, features = ["oid"] }
 testresult = "0.4.0"
 hex-literal = "0.4.1"
-ssh-key = { version = "0.6.4", features = ["p256"] }
+ssh-key = { version = "0.6.6", features = ["p256"] }
 p256 = { version = "0.13.2" }
 const-str = "0.5.7"
 rstest = "0.18.2"
