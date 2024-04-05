@@ -13,7 +13,7 @@ spelling:
 formatting:
     just --unstable --fmt --check
     # We're using nightly to properly group imports, see .rustfmt.toml
-    cargo +nightly fmt -- --check
+    cargo +nightly fmt --all -- --check
 
 # Lints the source code
 lints:
@@ -67,4 +67,4 @@ fix:
     cargo clippy --fix --allow-staged
 
     # fmt must be last as clippy's changes may break formatting
-    cargo +nightly fmt
+    cargo +nightly fmt --all
