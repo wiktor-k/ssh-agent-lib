@@ -1,0 +1,22 @@
+[package]
+name = "ssh-agent-lib-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+ssh-encoding = "0.2.0"
+
+[dependencies.ssh-agent-lib]
+path = ".."
+
+[[bin]]
+name = "message_decode"
+path = "fuzz_targets/message_decode.rs"
+test = false
+doc = false
+bench = false

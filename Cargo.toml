@@ -15,6 +15,9 @@ keywords = ["ssh", "agent", "authentication", "openssh", "async"]
 categories = ["authentication", "cryptography", "encoding", "network-programming", "parsing"]
 exclude = [".github"]
 
+[workspace]
+members = [".", "fuzz"]
+
 [dependencies]
 byteorder = "1.4.3"
 async-trait = { version = "0.1.77", optional = true }
