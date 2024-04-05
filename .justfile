@@ -3,7 +3,7 @@
 # Faster checks need to be executed first for better UX.  For example
 
 # codespell is very fast. cargo fmt does not need to download crates etc.
-check: spelling formatting lints dependencies tests
+check: spelling formatting docs lints dependencies tests
 
 # Checks common spelling mistakes
 spelling:
@@ -13,11 +13,11 @@ spelling:
 formatting:
     just --unstable --fmt --check
     # We're using nightly to properly group imports, see .rustfmt.toml
-    cargo +nightly fmt -- --check
+    cargo +nightly fmt --all -- --check
 
 # Lints the source code
 lints:
-    cargo clippy --all -- -D warnings
+    cargo clippy --workspace --no-deps --all-targets -- -D warnings
 
 # Checks for issues with dependencies
 dependencies:
@@ -26,6 +26,10 @@ dependencies:
 # Runs all unit tests. By default ignored tests are not run. Run with `ignored=true` to run only ignored tests
 tests:
     cargo test --all
+
+# Build docs for this crate only
+docs:
+    cargo doc --no-deps
 
 # Checks for commit messages
 check-commits REFS='main..':
@@ -63,4 +67,4 @@ fix:
     cargo clippy --fix --allow-staged
 
     # fmt must be last as clippy's changes may break formatting
-    cargo +nightly fmt
+    cargo +nightly fmt --all
