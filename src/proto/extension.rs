@@ -113,9 +113,10 @@ impl Decode for KeySpec {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use hex_literal::hex;
     use testresult::TestResult;
+
+    use super::*;
 
     #[test]
     fn parse_bind() -> TestResult {

@@ -1,0 +1,20 @@
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+  "RUSTSEC-2023-0071",  # the vurnerable crate is used in tests only
+]
+
+[bans]
+deny = [
+]
+multiple-versions = "allow"
+
+[licenses]
+version = 2
+allow = [
+  "Apache-2.0",
+  "MIT",
+  "Unicode-DFS-2016",
+  "BSD-3-Clause",
+]

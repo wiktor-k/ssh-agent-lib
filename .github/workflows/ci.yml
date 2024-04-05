@@ -17,8 +17,11 @@ jobs:
     name: Check spelling
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - run: cargo install --locked just
+      - run: sudo apt-get install -y codespell
       - name: Check spelling
-        uses: codespell-project/actions-codespell@master
+        run: just spelling
 
   formatting:
     name: Check formatting
@@ -31,8 +34,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - run: cargo install --locked just
+      - run: rustup install nightly
+      - run: rustup component add rustfmt --toolchain nightly
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: just formatting
 
   tests:
     name: Unit tests
@@ -45,9 +51,25 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build and test
-        run: cargo build --verbose --all && cargo test --verbose --all
-       
+      - run: cargo install --locked just
+      - name: Run unit tests
+        run: just tests
+
+  deps:
+    name: Check dependencies
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+        - os: macos-latest
+        - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo install --locked just cargo-deny
+      - name: Run unit tests
+        run: just dependencies
+
   lints:
     name: Clippy lints
     strategy:
@@ -59,8 +81,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - run: cargo install --locked just
       - name: Check for lints
-        run: cargo clippy -- -D warnings
+        run: just lints
 
   integration:
     name: Integration tests

@@ -1,3 +1,8 @@
+use std::fmt;
+use std::io;
+use std::marker::Unpin;
+use std::mem::size_of;
+
 use async_trait::async_trait;
 use byteorder::{BigEndian, ReadBytesExt};
 use futures::{SinkExt, TryStreamExt};
@@ -11,11 +16,6 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::net::{UnixListener, UnixStream};
 use tokio_util::bytes::{Buf, BufMut, BytesMut};
 use tokio_util::codec::{Decoder, Encoder, Framed};
-
-use std::fmt;
-use std::io;
-use std::marker::Unpin;
-use std::mem::size_of;
 
 use super::error::AgentError;
 use super::proto::{message::Message, ProtoError};
