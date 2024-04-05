@@ -69,16 +69,20 @@ SSH_AUTH_SOCK=\\.\pipe\agent ssh user@example.com
 
 For more elaborate example see the `examples` directory or [crates using `ssh-agent-lib`](https://crates.io/crates/ssh-agent-lib/reverse_dependencies).
 
-## Note
+## License
 
-This library has been forked from
-[sekey/ssh-agent.rs](https://github.com/sekey/ssh-agent.rs) as the
-upstream seems not be maintained (at least as of 2022).
+This project is licensed under either of:
 
-# License
+  - [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0),
+  - [MIT license](https://opensource.org/licenses/MIT).
 
-This project is licensed under the [MIT license](https://opensource.org/licenses/MIT).
+at your option.
 
-## Contribution
+### Contribution
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this crate by you shall be licensed as above, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this crate by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+
+### Note
+
+This library has been forked from [sekey/ssh-agent.rs](https://github.com/sekey/ssh-agent.rs) as the upstream seems not be maintained (at least as of 2022).
+The original library was MIT-licensed but due to this library using MIT/Apache 2.0 any changes that are made over the old bits are re-licensed MIT/Apache 2.0 where the original (c) line was retained in relation "for the x parts derived from y" which identify the forked bits.
