@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.ref }}
+  group: rust-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cargo install --locked just cargo-deny
-      - name: Run unit tests
+      - name: Run dependencies check
         run: just dependencies
 
   lints:
@@ -84,28 +84,3 @@ jobs:
       - run: cargo install --locked just
       - name: Check for lints
         run: just lints
-
-  integration:
-    name: Integration tests
-    # If starting the example fails at runtime the integration test will
-    # be stuck. Try to limit the damage. The value "10" selected arbitrarily.
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest ]
-        include:
-        - os: windows-latest
-          windows: true
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      # If the example doesn't compile the integration test will
-      # be stuck. Check for compilation issues earlier to abort the job
-      - name: Check if the example compiles
-        run: cargo check --example key_storage
-      - name: Run integration tests
-        run: ./tests/sign-and-verify.sh
-        if: ${{ ! matrix.windows }}
-      - name: Run integration tests
-        run: ".\\tests\\sign-and-verify-win.bat"
-        if: ${{ matrix.windows }}
