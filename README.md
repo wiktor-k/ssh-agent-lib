@@ -20,6 +20,7 @@ use ssh_agent_lib::agent::NamedPipeListener;
 
 use ssh_agent_lib::agent::{Session, Agent};
 use ssh_agent_lib::proto::message::Message;
+use ssh_key::{Algorithm, Signature};
 
 #[derive(Default)]
 struct MyAgent;
@@ -31,7 +32,10 @@ impl Session for MyAgent {
             Message::SignRequest(request) => {
                 // get the signature by signing `request.data`
                 let signature = vec![];
-                Ok(Message::SignResponse(signature))
+                Ok(Message::SignResponse(Signature::new(
+                        Algorithm::new("algorithm")?,
+                        signature,
+                  )?))
             },
             _ => Ok(Message::Failure),
         }

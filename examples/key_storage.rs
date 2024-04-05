@@ -2,15 +2,18 @@ use async_trait::async_trait;
 use log::info;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener;
+use ssh_agent_lib::proto::extension::SessionBind;
 #[cfg(not(windows))]
 use tokio::net::UnixListener;
 
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::message::{self, Message, SignRequest};
-use ssh_agent_lib::proto::private_key::PrivateKey;
-use ssh_agent_lib::proto::public_key::PublicKey;
-use ssh_agent_lib::proto::signature::{self, Signature};
-use ssh_agent_lib::proto::{from_bytes, to_bytes};
+use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
+use ssh_key::{
+    private::{KeypairData, PrivateKey},
+    public::PublicKey,
+    Algorithm, Signature,
+};
 
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -68,21 +71,18 @@ impl KeyStorage {
     }
 
     fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<dyn Error>> {
-        let pubkey: PublicKey = from_bytes(&sign_request.pubkey_blob)?;
+        let pubkey: PublicKey = sign_request.pubkey.clone().try_into()?;
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
-            match identity.privkey {
-                PrivateKey::Rsa(ref key) => {
+            match identity.privkey.key_data() {
+                KeypairData::Rsa(ref key) => {
                     let algorithm;
 
                     let private_key = rsa::RsaPrivateKey::from_components(
-                        BigUint::from_bytes_be(&key.n),
-                        BigUint::from_bytes_be(&key.e),
-                        BigUint::from_bytes_be(&key.d),
-                        vec![
-                            BigUint::from_bytes_be(&key.p),
-                            BigUint::from_bytes_be(&key.q),
-                        ],
+                        BigUint::from_bytes_be(&key.public.n.as_bytes()),
+                        BigUint::from_bytes_be(&key.public.e.as_bytes()),
+                        BigUint::from_bytes_be(&key.private.d.as_bytes()),
+                        vec![],
                     )?;
                     let mut rng = rand::thread_rng();
                     let data = &sign_request.data;
@@ -97,11 +97,10 @@ impl KeyStorage {
                         algorithm = "ssh-rsa";
                         SigningKey::<Sha1>::new(private_key).sign_with_rng(&mut rng, data)
                     };
-
-                    Ok(Signature {
-                        algorithm: algorithm.to_string(),
-                        blob: signature.to_bytes().to_vec(),
-                    })
+                    Ok(Signature::new(
+                        Algorithm::new(algorithm)?,
+                        signature.to_bytes().to_vec(),
+                    )?)
                 }
                 _ => Err(From::from("Signature for key type not implemented")),
             }
@@ -117,28 +116,75 @@ impl KeyStorage {
                 let mut identities = vec![];
                 for identity in self.identities.lock().unwrap().iter() {
                     identities.push(message::Identity {
-                        pubkey_blob: to_bytes(&identity.pubkey)?,
+                        pubkey: identity.pubkey.key_data().clone(),
                         comment: identity.comment.clone(),
                     })
                 }
                 Ok(Message::IdentitiesAnswer(identities))
             }
             Message::RemoveIdentity(identity) => {
-                let pubkey: PublicKey = from_bytes(&identity.pubkey_blob)?;
+                let pubkey: PublicKey = identity.pubkey.try_into()?;
                 self.identity_remove(&pubkey)?;
                 Ok(Message::Success)
             }
             Message::AddIdentity(identity) => {
+                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
                 self.identity_add(Identity {
-                    pubkey: PublicKey::from(&identity.privkey),
-                    privkey: identity.privkey,
+                    pubkey: PublicKey::from(&privkey),
+                    privkey,
+                    comment: identity.comment,
+                });
+                Ok(Message::Success)
+            }
+            Message::AddIdConstrained(AddIdentityConstrained {
+                identity,
+                constraints,
+            }) => {
+                eprintln!("Would use these constraints: {constraints:#?}");
+                for constraint in constraints {
+                    if let KeyConstraint::Extension(name, mut details) = constraint {
+                        if name == "restrict-destination-v00@openssh.com" {
+                            if let Ok(destination_constraint) = details.parse::<SessionBind>() {
+                                eprintln!("Destination constraint: {destination_constraint:?}");
+                            }
+                        }
+                    }
+                }
+                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
+                self.identity_add(Identity {
+                    pubkey: PublicKey::from(&privkey),
+                    privkey,
                     comment: identity.comment,
                 });
                 Ok(Message::Success)
             }
             Message::SignRequest(request) => {
-                let signature = to_bytes(&self.sign(&request)?)?;
+                let signature = self.sign(&request)?;
                 Ok(Message::SignResponse(signature))
+            }
+            Message::AddSmartcardKey(key) => {
+                println!("Adding smartcard key: {key:?}");
+                Ok(Message::Success)
+            }
+            Message::AddSmartcardKeyConstrained(key) => {
+                println!("Adding smartcard key with constraints: {key:?}");
+                Ok(Message::Success)
+            }
+            Message::Lock(pwd) => {
+                println!("Locked with password: {pwd:?}");
+                Ok(Message::Success)
+            }
+            Message::Unlock(pwd) => {
+                println!("Unlocked with password: {pwd:?}");
+                Ok(Message::Success)
+            }
+            Message::Extension(mut extension) => {
+                eprintln!("Extension: {extension:?}");
+                if extension.name == "session-bind@openssh.com" {
+                    let bind = extension.details.parse::<SessionBind>()?;
+                    eprintln!("Bind: {bind:?}");
+                }
+                Ok(Message::Success)
             }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
         };
@@ -177,6 +223,7 @@ impl Agent for KeyStorageAgent {
 #[tokio::main]
 #[cfg(not(windows))]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let socket = "ssh-agent.sock";
     let _ = std::fs::remove_file(socket); // remove the socket if exists
 

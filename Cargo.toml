@@ -17,19 +17,19 @@ exclude = [".github"]
 
 [dependencies]
 byteorder = "1.4.3"
-serde = {version = "1", features = ["derive"]}
-
 async-trait = { version = "0.1.77", optional = true }
-bytes = { version = "1.5.0", optional = true }
 futures = { version = "0.3.30", optional = true }
 log = { version = "0.4.6", optional = true }
 tokio = { version = "1", optional = true, features = ["rt", "net"] }
 tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
 service-binding = { version = "^2" }
+ssh-encoding = { version = "0.2.0" }
+ssh-key = { version = "0.6.4", features = ["rsa", "alloc"] }
+#uuid = { version = "1.8.0", features = ["v4"] }
 
 [features]
 default = ["agent"]
-agent = ["futures", "log", "tokio", "tokio-util", "bytes", "async-trait"]
+agent = ["futures", "log", "tokio", "tokio-util", "async-trait"]
 
 [[example]]
 name = "key_storage"
@@ -41,3 +41,9 @@ rand = "0.8.5"
 rsa = { version = "0.9.6", features = ["sha2", "sha1"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 sha1 = { version = "0.10.5", default-features = false, features = ["oid"] }
+testresult = "0.4.0"
+hex-literal = "0.4.1"
+ssh-key = { version = "0.6.4", features = ["p256"] }
+p256 = { version = "0.13.2" }
+const-str = "0.5.7"
+rstest = "0.18.2"

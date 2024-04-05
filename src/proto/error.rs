@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::fmt::Display;
 use std::{io, string};
 
 #[derive(Debug)]
@@ -8,8 +7,9 @@ pub enum ProtoError {
     MessageTooLong,
     StringEncoding(string::FromUtf8Error),
     IO(io::Error),
-    Serialization(String),
-    Deserialization(String),
+    SshEncoding(ssh_encoding::Error),
+    SshKey(ssh_key::Error),
+    UnsupportedCommand { command: u8 },
 }
 
 impl From<ProtoError> for () {
@@ -22,21 +22,21 @@ impl From<io::Error> for ProtoError {
     }
 }
 
+impl From<ssh_encoding::Error> for ProtoError {
+    fn from(e: ssh_encoding::Error) -> ProtoError {
+        ProtoError::SshEncoding(e)
+    }
+}
+
+impl From<ssh_key::Error> for ProtoError {
+    fn from(e: ssh_key::Error) -> ProtoError {
+        ProtoError::SshKey(e)
+    }
+}
+
 impl From<string::FromUtf8Error> for ProtoError {
     fn from(e: string::FromUtf8Error) -> ProtoError {
         ProtoError::StringEncoding(e)
-    }
-}
-
-impl serde::ser::Error for ProtoError {
-    fn custom<T: Display>(msg: T) -> Self {
-        ProtoError::Serialization(msg.to_string())
-    }
-}
-
-impl serde::de::Error for ProtoError {
-    fn custom<T: Display>(msg: T) -> Self {
-        ProtoError::Deserialization(msg.to_string())
     }
 }
 
@@ -47,8 +47,9 @@ impl std::error::Error for ProtoError {
             ProtoError::MessageTooLong => None,
             ProtoError::StringEncoding(e) => Some(e),
             ProtoError::IO(e) => Some(e),
-            ProtoError::Serialization(_) => None,
-            ProtoError::Deserialization(_) => None,
+            ProtoError::SshEncoding(e) => Some(e),
+            ProtoError::SshKey(e) => Some(e),
+            ProtoError::UnsupportedCommand { .. } => None,
         }
     }
 }
@@ -60,8 +61,11 @@ impl std::fmt::Display for ProtoError {
             ProtoError::MessageTooLong => f.write_str("Message too long"),
             ProtoError::StringEncoding(_) => f.write_str("String encoding failed"),
             ProtoError::IO(_) => f.write_str("I/O Error"),
-            ProtoError::Serialization(_) => f.write_str("Serialization Error"),
-            ProtoError::Deserialization(_) => f.write_str("Deserialization Error"),
+            ProtoError::SshEncoding(_) => f.write_str("SSH encoding Error"),
+            ProtoError::SshKey(e) => write!(f, "SSH key Error: {e}"),
+            ProtoError::UnsupportedCommand { command } => {
+                write!(f, "Command not supported ({command})")
+            }
         }
     }
 }

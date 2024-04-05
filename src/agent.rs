@@ -1,14 +1,15 @@
 use async_trait::async_trait;
 use byteorder::{BigEndian, ReadBytesExt};
-use bytes::{Buf, BufMut, BytesMut};
 use futures::{SinkExt, TryStreamExt};
 use log::{error, info};
+use ssh_encoding::{Decode, Encode};
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
+use tokio_util::bytes::{Buf, BufMut, BytesMut};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use std::fmt;
@@ -17,8 +18,7 @@ use std::marker::Unpin;
 use std::mem::size_of;
 
 use super::error::AgentError;
-use super::proto::message::Message;
-use super::proto::{from_bytes, to_bytes};
+use super::proto::{message::Message, ProtoError};
 
 #[derive(Debug)]
 pub struct MessageCodec;
@@ -40,7 +40,7 @@ impl Decoder for MessageCodec {
             return Ok(None);
         }
 
-        let message: Message = from_bytes(bytes)?;
+        let message: Message = Message::decode(&mut bytes)?;
         src.advance(size_of::<u32>() + length);
         Ok(Some(message))
     }
@@ -50,8 +50,14 @@ impl Encoder<Message> for MessageCodec {
     type Error = AgentError;
 
     fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let bytes = to_bytes(&to_bytes(&item)?)?;
+        let mut bytes = Vec::new();
+
+        let len = item.encoded_len().unwrap() as u32;
+        len.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
+
+        item.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
         dst.put(&*bytes);
+
         Ok(())
     }
 }
@@ -122,6 +128,7 @@ pub trait Session: 'static + Sync + Send + Sized {
     {
         loop {
             if let Some(incoming_message) = adapter.try_next().await? {
+                log::debug!("Request: {incoming_message:?}");
                 let response = match self.handle(incoming_message).await {
                     Ok(message) => message,
                     Err(e) => {
@@ -129,6 +136,7 @@ pub trait Session: 'static + Sync + Send + Sized {
                         Message::Failure
                     }
                 };
+                log::debug!("Response: {response:?}");
 
                 adapter.send(response).await?;
             } else {
