@@ -17,7 +17,7 @@ formatting:
 
 # Lints the source code
 lints:
-    cargo clippy --all -- -D warnings
+    cargo clippy --workspace --no-deps --all-targets -- -D warnings
 
 # Checks for issues with dependencies
 dependencies:

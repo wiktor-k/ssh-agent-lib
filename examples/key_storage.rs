@@ -34,7 +34,7 @@ struct KeyStorage {
 }
 
 impl KeyStorage {
-    fn identity_index_from_pubkey(identities: &Vec<Identity>, pubkey: &PublicKey) -> Option<usize> {
+    fn identity_index_from_pubkey(identities: &[Identity], pubkey: &PublicKey) -> Option<usize> {
         for (index, identity) in identities.iter().enumerate() {
             if &identity.pubkey == pubkey {
                 return Some(index);
@@ -69,7 +69,7 @@ impl KeyStorage {
     }
 
     fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<dyn Error>> {
-        let pubkey: PublicKey = sign_request.pubkey.clone().try_into()?;
+        let pubkey: PublicKey = sign_request.pubkey.clone().into();
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
             match identity.privkey.key_data() {
@@ -121,7 +121,7 @@ impl KeyStorage {
                 Ok(Message::IdentitiesAnswer(identities))
             }
             Message::RemoveIdentity(identity) => {
-                let pubkey: PublicKey = identity.pubkey.try_into()?;
+                let pubkey: PublicKey = identity.pubkey.into();
                 self.identity_remove(&pubkey)?;
                 Ok(Message::Success)
             }
