@@ -3,7 +3,7 @@
 # Faster checks need to be executed first for better UX.  For example
 
 # codespell is very fast. cargo fmt does not need to download crates etc.
-check: spelling formatting lints dependencies tests
+check: spelling formatting docs lints dependencies tests
 
 # Checks common spelling mistakes
 spelling:
@@ -26,6 +26,10 @@ dependencies:
 # Runs all unit tests. By default ignored tests are not run. Run with `ignored=true` to run only ignored tests
 tests:
     cargo test --all
+
+# Build docs for this crate only
+docs:
+    cargo doc --no-deps
 
 # Checks for commit messages
 check-commits REFS='main..':
