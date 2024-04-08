@@ -85,4 +85,11 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 ### Note
 
 This library has been forked from [sekey/ssh-agent.rs](https://github.com/sekey/ssh-agent.rs) as the upstream seems not be maintained (at least as of 2022).
-The original library was MIT-licensed but due to this library using MIT/Apache 2.0 any changes that are made over the old bits are re-licensed MIT/Apache 2.0 where the original (c) line was retained in relation "for the x parts derived from y" which identify the forked bits.
+The library was previously licensed under MIT, however in [#36], we relicensed it to MIT/Apache 2.0.
+
+Contributors gave their approval for relicensing [#36] [screenshot]
+
+[#36]: https://github.com/wiktor-k/ssh-agent-lib/pull/36
+[screenshot]: http://web.archive.org/web/20240408190456/https://github.com/wiktor-k/ssh-agent-lib/pull/36
+
+What remains from the original library is considered minor and does not count for copyright assignment.
