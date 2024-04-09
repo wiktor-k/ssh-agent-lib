@@ -12,7 +12,7 @@ use sha1::Sha1;
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::{Agent, Session};
 use ssh_agent_lib::proto::extension::{RestrictDestination, SessionBind};
-use ssh_agent_lib::proto::message::{self, Credential, Message, SignRequest};
+use ssh_agent_lib::proto::message::{self, Credential, Request, Response, SignRequest};
 use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
 use ssh_key::{
     private::{KeypairData, PrivateKey},
@@ -107,10 +107,10 @@ impl KeyStorage {
         }
     }
 
-    fn handle_message(&self, request: Message) -> Result<Message, Box<dyn Error>> {
+    fn handle_message(&self, request: Request) -> Result<Response, Box<dyn Error>> {
         info!("Request: {:?}", request);
         let response = match request {
-            Message::RequestIdentities => {
+            Request::RequestIdentities => {
                 let mut identities = vec![];
                 for identity in self.identities.lock().unwrap().iter() {
                     identities.push(message::Identity {
@@ -118,14 +118,14 @@ impl KeyStorage {
                         comment: identity.comment.clone(),
                     })
                 }
-                Ok(Message::IdentitiesAnswer(identities))
+                Ok(Response::IdentitiesAnswer(identities))
             }
-            Message::RemoveIdentity(identity) => {
+            Request::RemoveIdentity(identity) => {
                 let pubkey: PublicKey = identity.pubkey.into();
                 self.identity_remove(&pubkey)?;
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::AddIdentity(identity) => {
+            Request::AddIdentity(identity) => {
                 if let Credential::Key { privkey, comment } = identity.credential {
                     let privkey = PrivateKey::try_from(privkey).unwrap();
                     self.identity_add(Identity {
@@ -134,9 +134,9 @@ impl KeyStorage {
                         comment,
                     });
                 }
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::AddIdConstrained(AddIdentityConstrained {
+            Request::AddIdConstrained(AddIdentityConstrained {
                 identity,
                 constraints,
             }) => {
@@ -159,35 +159,35 @@ impl KeyStorage {
                         comment,
                     });
                 }
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::SignRequest(request) => {
+            Request::SignRequest(request) => {
                 let signature = self.sign(&request)?;
-                Ok(Message::SignResponse(signature))
+                Ok(Response::SignResponse(signature))
             }
-            Message::AddSmartcardKey(key) => {
+            Request::AddSmartcardKey(key) => {
                 println!("Adding smartcard key: {key:?}");
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::AddSmartcardKeyConstrained(key) => {
+            Request::AddSmartcardKeyConstrained(key) => {
                 println!("Adding smartcard key with constraints: {key:?}");
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::Lock(pwd) => {
+            Request::Lock(pwd) => {
                 println!("Locked with password: {pwd:?}");
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::Unlock(pwd) => {
+            Request::Unlock(pwd) => {
                 println!("Unlocked with password: {pwd:?}");
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
-            Message::Extension(mut extension) => {
+            Request::Extension(mut extension) => {
                 eprintln!("Extension: {extension:?}");
                 if extension.name == "session-bind@openssh.com" {
                     let bind = extension.details.parse::<SessionBind>()?;
                     eprintln!("Bind: {bind:?}");
                 }
-                Ok(Message::Success)
+                Ok(Response::Success)
             }
             _ => Err(From::from(format!("Unknown message: {:?}", request))),
         };
@@ -198,7 +198,7 @@ impl KeyStorage {
 
 #[async_trait]
 impl Session for KeyStorage {
-    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>> {
+    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>> {
         self.handle_message(message)
     }
 }
