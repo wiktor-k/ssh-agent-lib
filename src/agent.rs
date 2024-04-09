@@ -3,6 +3,7 @@ use std::io;
 
 use async_trait::async_trait;
 use futures::{SinkExt, TryStreamExt};
+use ssh_key::Signature;
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
@@ -14,6 +15,15 @@ use tokio_util::codec::Framed;
 use super::error::AgentError;
 use super::proto::message::{Request, Response};
 use crate::codec::Codec;
+use crate::proto::AddIdentity;
+use crate::proto::AddIdentityConstrained;
+use crate::proto::AddSmartcardKeyConstrained;
+use crate::proto::Extension;
+use crate::proto::Identity;
+use crate::proto::ProtoError;
+use crate::proto::RemoveIdentity;
+use crate::proto::SignRequest;
+use crate::proto::SmartcardKey;
 
 #[async_trait]
 pub trait ListeningSocket {
@@ -71,7 +81,98 @@ impl ListeningSocket for NamedPipeListener {
 
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
-    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>>;
+    async fn request_identities(&mut self) -> Result<Vec<Identity>, Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 11 }))
+    }
+
+    async fn sign(
+        &mut self,
+        _request: SignRequest,
+    ) -> Result<Signature, Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 13 }))
+    }
+
+    async fn add_identity(
+        &mut self,
+        _identity: AddIdentity,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 17 }))
+    }
+
+    async fn add_identity_constrained(
+        &mut self,
+        _identity: AddIdentityConstrained,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 25 }))
+    }
+
+    async fn remove_identity(
+        &mut self,
+        _identity: RemoveIdentity,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 18 }))
+    }
+
+    async fn remove_all_identities(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 19 }))
+    }
+
+    async fn add_smartcard_key(
+        &mut self,
+        _key: SmartcardKey,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 20 }))
+    }
+
+    async fn add_smartcard_key_constrained(
+        &mut self,
+        _key: AddSmartcardKeyConstrained,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 26 }))
+    }
+
+    async fn remove_smartcard_key(
+        &mut self,
+        _key: SmartcardKey,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 21 }))
+    }
+
+    async fn lock(&mut self, _key: String) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 22 }))
+    }
+
+    async fn unlock(&mut self, _key: String) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 23 }))
+    }
+
+    async fn extension(&mut self, _extension: Extension) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 27 }))
+    }
+
+    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>> {
+        match message {
+            Request::RequestIdentities => {
+                return Ok(Response::IdentitiesAnswer(self.request_identities().await?))
+            }
+            Request::SignRequest(request) => {
+                return Ok(Response::SignResponse(self.sign(request).await?))
+            }
+            Request::AddIdentity(identity) => self.add_identity(identity).await?,
+            Request::RemoveIdentity(identity) => self.remove_identity(identity).await?,
+            Request::RemoveAllIdentities => self.remove_all_identities().await?,
+            Request::AddSmartcardKey(key) => self.add_smartcard_key(key).await?,
+            Request::RemoveSmartcardKey(key) => self.remove_smartcard_key(key).await?,
+            Request::Lock(key) => self.lock(key).await?,
+            Request::Unlock(key) => self.unlock(key).await?,
+            Request::AddIdConstrained(identity) => self.add_identity_constrained(identity).await?,
+            Request::AddSmartcardKeyConstrained(key) => {
+                self.add_smartcard_key_constrained(key).await?
+            }
+            Request::Extension(extension) => self.extension(extension).await?,
+        }
+        Ok(Response::Success)
+    }
 
     async fn handle_socket<S>(
         &mut self,
