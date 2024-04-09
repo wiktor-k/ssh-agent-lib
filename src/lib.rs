@@ -6,6 +6,8 @@ pub mod proto;
 
 #[cfg(feature = "agent")]
 pub mod agent;
+#[cfg(feature = "codec")]
+pub mod codec;
 pub mod error;
 
 #[cfg(feature = "agent")]
