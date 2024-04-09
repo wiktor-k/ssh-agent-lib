@@ -1,73 +1,19 @@
-use std::error::Error;
 use std::{io, string};
 
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 pub enum ProtoError {
-    UnexpectedVariant,
-    MessageTooLong,
-    StringEncoding(string::FromUtf8Error),
-    IO(io::Error),
-    SshEncoding(ssh_encoding::Error),
-    SshKey(ssh_key::Error),
+    #[error("String encoding failed: {0}")]
+    StringEncoding(#[from] string::FromUtf8Error),
+    #[error("I/O Error: {0}")]
+    IO(#[from] io::Error),
+    #[error("SSH encoding error: {0}")]
+    SshEncoding(#[from] ssh_encoding::Error),
+    #[error("SSH key error: {0}")]
+    SshKey(#[from] ssh_key::Error),
+    #[error("Command not supported ({command})")]
     UnsupportedCommand { command: u8 },
-}
-
-impl From<ProtoError> for () {
-    fn from(_e: ProtoError) {}
-}
-
-impl From<io::Error> for ProtoError {
-    fn from(e: io::Error) -> ProtoError {
-        ProtoError::IO(e)
-    }
-}
-
-impl From<ssh_encoding::Error> for ProtoError {
-    fn from(e: ssh_encoding::Error) -> ProtoError {
-        ProtoError::SshEncoding(e)
-    }
-}
-
-impl From<ssh_key::Error> for ProtoError {
-    fn from(e: ssh_key::Error) -> ProtoError {
-        ProtoError::SshKey(e)
-    }
-}
-
-impl From<string::FromUtf8Error> for ProtoError {
-    fn from(e: string::FromUtf8Error) -> ProtoError {
-        ProtoError::StringEncoding(e)
-    }
-}
-
-impl std::error::Error for ProtoError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            ProtoError::UnexpectedVariant => None,
-            ProtoError::MessageTooLong => None,
-            ProtoError::StringEncoding(e) => Some(e),
-            ProtoError::IO(e) => Some(e),
-            ProtoError::SshEncoding(e) => Some(e),
-            ProtoError::SshKey(e) => Some(e),
-            ProtoError::UnsupportedCommand { .. } => None,
-        }
-    }
-}
-
-impl std::fmt::Display for ProtoError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ProtoError::UnexpectedVariant => f.write_str("Unexpected variant"),
-            ProtoError::MessageTooLong => f.write_str("Message too long"),
-            ProtoError::StringEncoding(_) => f.write_str("String encoding failed"),
-            ProtoError::IO(_) => f.write_str("I/O Error"),
-            ProtoError::SshEncoding(_) => f.write_str("SSH encoding Error"),
-            ProtoError::SshKey(e) => write!(f, "SSH key Error: {e}"),
-            ProtoError::UnsupportedCommand { command } => {
-                write!(f, "Command not supported ({command})")
-            }
-        }
-    }
 }
 
 pub type ProtoResult<T> = Result<T, ProtoError>;
