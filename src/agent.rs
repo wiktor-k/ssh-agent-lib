@@ -1,69 +1,19 @@
 use std::fmt;
 use std::io;
-use std::marker::Unpin;
-use std::mem::size_of;
 
 use async_trait::async_trait;
-use byteorder::{BigEndian, ReadBytesExt};
 use futures::{SinkExt, TryStreamExt};
-use log::{error, info};
-use ssh_encoding::{Decode, Encode};
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
-use tokio_util::bytes::{Buf, BufMut, BytesMut};
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
 
 use super::error::AgentError;
-use super::proto::{
-    message::{Request, Response},
-    ProtoError,
-};
-
-#[derive(Debug)]
-pub struct MessageCodec;
-
-impl Decoder for MessageCodec {
-    type Item = Request;
-    type Error = AgentError;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let mut bytes = &src[..];
-
-        if bytes.len() < size_of::<u32>() {
-            return Ok(None);
-        }
-
-        let length = bytes.read_u32::<BigEndian>()? as usize;
-
-        if bytes.len() < length {
-            return Ok(None);
-        }
-
-        let message = Self::Item::decode(&mut bytes)?;
-        src.advance(size_of::<u32>() + length);
-        Ok(Some(message))
-    }
-}
-
-impl Encoder<Response> for MessageCodec {
-    type Error = AgentError;
-
-    fn encode(&mut self, item: Response, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let mut bytes = Vec::new();
-
-        let len = item.encoded_len().unwrap() as u32;
-        len.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
-
-        item.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
-        dst.put(&*bytes);
-
-        Ok(())
-    }
-}
+use super::proto::message::{Request, Response};
+use crate::codec::Codec;
 
 #[async_trait]
 pub trait ListeningSocket {
@@ -125,7 +75,7 @@ pub trait Session: 'static + Sync + Send + Sized {
 
     async fn handle_socket<S>(
         &mut self,
-        mut adapter: Framed<S::Stream, MessageCodec>,
+        mut adapter: Framed<S::Stream, Codec<Request, Response>>,
     ) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
@@ -136,7 +86,7 @@ pub trait Session: 'static + Sync + Send + Sized {
                 let response = match self.handle(incoming_message).await {
                     Ok(message) => message,
                     Err(e) => {
-                        error!("Error handling message: {:?}", e);
+                        log::error!("Error handling message: {:?}", e);
                         Response::Failure
                     }
                 };
@@ -159,20 +109,20 @@ pub trait Agent: 'static + Sync + Send + Sized {
     where
         S: ListeningSocket + fmt::Debug + Send,
     {
-        info!("Listening; socket = {:?}", socket);
+        log::info!("Listening; socket = {:?}", socket);
         loop {
             match socket.accept().await {
                 Ok(socket) => {
                     let mut session = self.new_session();
                     tokio::spawn(async move {
-                        let adapter = Framed::new(socket, MessageCodec);
+                        let adapter = Framed::new(socket, Codec::<Request, Response>::default());
                         if let Err(e) = session.handle_socket::<S>(adapter).await {
-                            error!("Agent protocol error: {:?}", e);
+                            log::error!("Agent protocol error: {:?}", e);
                         }
                     });
                 }
                 Err(e) => {
-                    error!("Failed to accept socket: {:?}", e);
+                    log::error!("Failed to accept socket: {:?}", e);
                     return Err(AgentError::IO(e));
                 }
             }

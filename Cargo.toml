@@ -33,7 +33,8 @@ thiserror = "1.0.58"
 
 [features]
 default = ["agent"]
-agent = ["futures", "log", "tokio", "tokio-util", "async-trait"]
+codec = ["tokio-util"]
+agent = ["futures", "log", "tokio", "async-trait", "codec"]
 
 [[example]]
 name = "key_storage"
