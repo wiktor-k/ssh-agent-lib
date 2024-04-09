@@ -13,7 +13,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio_util::codec::Framed;
 
 use super::error::AgentError;
-use super::proto::message::{Request, Response};
+use super::proto::{request::Request, response::Response};
 use crate::codec::Codec;
 use crate::proto::AddIdentity;
 use crate::proto::AddIdentityConstrained;
