@@ -18,13 +18,16 @@ use tokio_util::bytes::{Buf, BufMut, BytesMut};
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use super::error::AgentError;
-use super::proto::{message::Message, ProtoError};
+use super::proto::{
+    message::{Request, Response},
+    ProtoError,
+};
 
 #[derive(Debug)]
 pub struct MessageCodec;
 
 impl Decoder for MessageCodec {
-    type Item = Message;
+    type Item = Request;
     type Error = AgentError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -40,16 +43,16 @@ impl Decoder for MessageCodec {
             return Ok(None);
         }
 
-        let message: Message = Message::decode(&mut bytes)?;
+        let message = Self::Item::decode(&mut bytes)?;
         src.advance(size_of::<u32>() + length);
         Ok(Some(message))
     }
 }
 
-impl Encoder<Message> for MessageCodec {
+impl Encoder<Response> for MessageCodec {
     type Error = AgentError;
 
-    fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Response, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let mut bytes = Vec::new();
 
         let len = item.encoded_len().unwrap() as u32;
@@ -118,7 +121,7 @@ impl ListeningSocket for NamedPipeListener {
 
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
-    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>>;
+    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>>;
 
     async fn handle_socket<S>(
         &mut self,
@@ -134,7 +137,7 @@ pub trait Session: 'static + Sync + Send + Sized {
                     Ok(message) => message,
                     Err(e) => {
                         error!("Error handling message: {:?}", e);
-                        Message::Failure
+                        Response::Failure
                     }
                 };
                 log::debug!("Response: {response:?}");

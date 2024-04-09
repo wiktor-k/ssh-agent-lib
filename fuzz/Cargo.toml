@@ -15,8 +15,8 @@ ssh-encoding = "0.2.0"
 path = ".."
 
 [[bin]]
-name = "message_decode"
-path = "fuzz_targets/message_decode.rs"
+name = "request_decode"
+path = "fuzz_targets/request_decode.rs"
 test = false
 doc = false
 bench = false

@@ -19,7 +19,7 @@ use tokio::net::UnixListener as Listener;
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 
 use ssh_agent_lib::agent::{Session, Agent};
-use ssh_agent_lib::proto::message::Message;
+use ssh_agent_lib::proto::message::{Request, Response};
 use ssh_key::{Algorithm, Signature};
 
 #[derive(Default)]
@@ -27,17 +27,17 @@ struct MyAgent;
 
 #[ssh_agent_lib::async_trait]
 impl Session for MyAgent {
-    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>> {
+    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>> {
         match message {
-            Message::SignRequest(request) => {
+            Request::SignRequest(request) => {
                 // get the signature by signing `request.data`
                 let signature = vec![];
-                Ok(Message::SignResponse(Signature::new(
+                Ok(Response::SignResponse(Signature::new(
                         Algorithm::new("algorithm")?,
                         signature,
                   )?))
             },
-            _ => Ok(Message::Failure),
+            _ => Ok(Response::Failure),
         }
     }
 }
