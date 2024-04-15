@@ -40,7 +40,13 @@ echo | ssh-keygen -f ca_user_key
 ssh-keygen -t rsa -f id_rsa -N ""
 echo | ssh-keygen -s ca_user_key -I darren -n darren -V +1h -z 1 id_rsa.pub
 # Add the key with the cert
-ssh-add -t 2 id_rsa
-
+if [ $(ssh-add -h 2>&1 | grep -ic hostkey_file) -eq 1 ]; then
+  # has support for RestrictDestination constraint (ubuntu)
+  ssh-add -t 2 -H tests/known_hosts -h github.com id_rsa
+else
+  # does not support RestrictDestination constraint (macos)
+  ssh-add -t 2 id_rsa
+fi
+  
 # clean up the only leftover
 rm -rf id_rsa id_rsa.pub id_rsa-cert.pub ca_user_key ca_user_key.pub

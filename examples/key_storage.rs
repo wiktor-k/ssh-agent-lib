@@ -11,7 +11,7 @@ use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::{Agent, Session};
-use ssh_agent_lib::proto::extension::SessionBind;
+use ssh_agent_lib::proto::extension::{RestrictDestination, SessionBind};
 use ssh_agent_lib::proto::message::{self, Credential, Message, SignRequest};
 use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
 use ssh_key::{
@@ -144,9 +144,10 @@ impl KeyStorage {
                 for constraint in constraints {
                     if let KeyConstraint::Extension(name, mut details) = constraint {
                         if name == "restrict-destination-v00@openssh.com" {
-                            if let Ok(destination_constraint) = details.parse::<SessionBind>() {
-                                eprintln!("Destination constraint: {destination_constraint:?}");
-                            }
+                            let destination_constraint = details
+                                .parse::<RestrictDestination>()
+                                .expect("to parse destination constraint");
+                            eprintln!("Destination constraint: {destination_constraint:?}");
                         }
                     }
                 }
