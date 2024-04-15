@@ -140,7 +140,7 @@ impl KeyStorage {
                 identity,
                 constraints,
             }) => {
-                eprintln!("Would use these constraints: {constraints:#?}");
+                eprintln!("Adding identity {identity:#?} with constraints {constraints:#?}");
                 for constraint in constraints {
                     if let KeyConstraint::Extension(name, mut details) = constraint {
                         if name == "restrict-destination-v00@openssh.com" {
