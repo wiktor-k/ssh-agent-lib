@@ -207,6 +207,16 @@ mod tests {
 
         let destination_constraint = RestrictDestination::decode(&mut buffer)?;
         eprintln!("Destination constraint: {destination_constraint:?}");
+
+        let mut buffer: &[u8] = &[
+            0, 0, 0, 102, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0,
+            0, 0, 0, 10, 103, 105, 116, 104, 117, 98, 46, 99, 111, 109, 0, 0, 0, 0, 0, 0, 0, 51, 0,
+            0, 0, 11, 115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, 0, 0, 0, 32, 227, 42, 170,
+            121, 21, 206, 185, 180, 73, 209, 186, 80, 234, 42, 40, 187, 26, 110, 1, 249, 11, 218,
+            36, 90, 45, 29, 135, 105, 125, 24, 162, 101, 0, 0, 0, 0, 0,
+        ];
+        let destination_constraint = RestrictDestination::decode(&mut buffer)?;
+        eprintln!("Destination constraint: {destination_constraint:?}");
         Ok(())
     }
 }

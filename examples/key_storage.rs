@@ -11,8 +11,8 @@ use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::{Agent, Session};
-use ssh_agent_lib::proto::extension::SessionBind;
-use ssh_agent_lib::proto::message::{self, Message, SignRequest};
+use ssh_agent_lib::proto::extension::{RestrictDestination, SessionBind};
+use ssh_agent_lib::proto::message::{self, Credential, Message, SignRequest};
 use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
 use ssh_key::{
     private::{KeypairData, PrivateKey},
@@ -126,34 +126,39 @@ impl KeyStorage {
                 Ok(Message::Success)
             }
             Message::AddIdentity(identity) => {
-                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
-                self.identity_add(Identity {
-                    pubkey: PublicKey::from(&privkey),
-                    privkey,
-                    comment: identity.comment,
-                });
+                if let Credential::Key { privkey, comment } = identity.credential {
+                    let privkey = PrivateKey::try_from(privkey).unwrap();
+                    self.identity_add(Identity {
+                        pubkey: PublicKey::from(&privkey),
+                        privkey,
+                        comment,
+                    });
+                }
                 Ok(Message::Success)
             }
             Message::AddIdConstrained(AddIdentityConstrained {
                 identity,
                 constraints,
             }) => {
-                eprintln!("Would use these constraints: {constraints:#?}");
+                eprintln!("Adding identity {identity:#?} with constraints {constraints:#?}");
                 for constraint in constraints {
                     if let KeyConstraint::Extension(name, mut details) = constraint {
                         if name == "restrict-destination-v00@openssh.com" {
-                            if let Ok(destination_constraint) = details.parse::<SessionBind>() {
-                                eprintln!("Destination constraint: {destination_constraint:?}");
-                            }
+                            let destination_constraint = details
+                                .parse::<RestrictDestination>()
+                                .expect("to parse destination constraint");
+                            eprintln!("Destination constraint: {destination_constraint:?}");
                         }
                     }
                 }
-                let privkey = PrivateKey::try_from(identity.privkey).unwrap();
-                self.identity_add(Identity {
-                    pubkey: PublicKey::from(&privkey),
-                    privkey,
-                    comment: identity.comment,
-                });
+                if let Credential::Key { privkey, comment } = identity.credential {
+                    let privkey = PrivateKey::try_from(privkey).unwrap();
+                    self.identity_add(Identity {
+                        pubkey: PublicKey::from(&privkey),
+                        privkey,
+                        comment,
+                    });
+                }
                 Ok(Message::Success)
             }
             Message::SignRequest(request) => {

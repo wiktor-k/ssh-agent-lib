@@ -1003,6 +1003,7 @@ dependencies = [
  "sha1",
  "ssh-encoding",
  "ssh-key",
+ "subtle",
  "testresult",
  "thiserror",
  "tokio",
@@ -1041,9 +1042,9 @@ dependencies = [
 
 [[package]]
 name = "ssh-key"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b71299a724c8d84956caaf8fc3b3ea57c3587fe2d0b800cd0dc1f3599905d7e"
+checksum = "ca9b366a80cf18bb6406f4cf4d10aebfb46140a8c0c33f666a144c5c76ecbafc"
 dependencies = [
  "num-bigint-dig",
  "p256",
