@@ -34,7 +34,8 @@ subtle = { version = "2", default-features = false }
 
 [features]
 default = ["agent"]
-agent = ["futures", "log", "tokio", "tokio-util", "async-trait"]
+codec = ["tokio-util"]
+agent = ["futures", "log", "tokio", "async-trait", "codec"]
 
 [[example]]
 name = "key_storage"

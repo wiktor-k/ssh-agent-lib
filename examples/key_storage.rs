@@ -10,10 +10,13 @@ use rsa::BigUint;
 use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
-use ssh_agent_lib::agent::{Agent, Session};
-use ssh_agent_lib::proto::extension::{RestrictDestination, SessionBind};
-use ssh_agent_lib::proto::message::{self, Credential, Message, SignRequest};
-use ssh_agent_lib::proto::{signature, AddIdentityConstrained, KeyConstraint};
+use ssh_agent_lib::agent::Session;
+use ssh_agent_lib::proto::extension::SessionBind;
+use ssh_agent_lib::proto::{
+    message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
+    Credential, Extension, KeyConstraint, RemoveIdentity, SignRequest, SmartcardKey,
+};
+use ssh_agent_lib::Agent;
 use ssh_key::{
     private::{KeypairData, PrivateKey},
     public::PublicKey,
@@ -67,8 +70,14 @@ impl KeyStorage {
             Err(From::from("Failed to remove identity: identity not found"))
         }
     }
+}
 
-    fn sign(&self, sign_request: &SignRequest) -> Result<Signature, Box<dyn Error>> {
+#[crate::async_trait]
+impl Session for KeyStorage {
+    async fn sign(
+        &mut self,
+        sign_request: SignRequest,
+    ) -> Result<Signature, Box<dyn std::error::Error>> {
         let pubkey: PublicKey = sign_request.pubkey.clone().into();
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
@@ -107,99 +116,111 @@ impl KeyStorage {
         }
     }
 
-    fn handle_message(&self, request: Message) -> Result<Message, Box<dyn Error>> {
-        info!("Request: {:?}", request);
-        let response = match request {
-            Message::RequestIdentities => {
-                let mut identities = vec![];
-                for identity in self.identities.lock().unwrap().iter() {
-                    identities.push(message::Identity {
-                        pubkey: identity.pubkey.key_data().clone(),
-                        comment: identity.comment.clone(),
-                    })
-                }
-                Ok(Message::IdentitiesAnswer(identities))
-            }
-            Message::RemoveIdentity(identity) => {
-                let pubkey: PublicKey = identity.pubkey.into();
-                self.identity_remove(&pubkey)?;
-                Ok(Message::Success)
-            }
-            Message::AddIdentity(identity) => {
-                if let Credential::Key { privkey, comment } = identity.credential {
-                    let privkey = PrivateKey::try_from(privkey).unwrap();
-                    self.identity_add(Identity {
-                        pubkey: PublicKey::from(&privkey),
-                        privkey,
-                        comment,
-                    });
-                }
-                Ok(Message::Success)
-            }
-            Message::AddIdConstrained(AddIdentityConstrained {
-                identity,
-                constraints,
-            }) => {
-                eprintln!("Adding identity {identity:#?} with constraints {constraints:#?}");
-                for constraint in constraints {
-                    if let KeyConstraint::Extension(name, mut details) = constraint {
-                        if name == "restrict-destination-v00@openssh.com" {
-                            let destination_constraint = details
-                                .parse::<RestrictDestination>()
-                                .expect("to parse destination constraint");
-                            eprintln!("Destination constraint: {destination_constraint:?}");
-                        }
+    async fn request_identities(
+        &mut self,
+    ) -> Result<Vec<message::Identity>, Box<dyn std::error::Error>> {
+        let mut identities = vec![];
+        for identity in self.identities.lock().unwrap().iter() {
+            identities.push(message::Identity {
+                pubkey: identity.pubkey.key_data().clone(),
+                comment: identity.comment.clone(),
+            })
+        }
+        Ok(identities)
+    }
+
+    async fn add_identity(
+        &mut self,
+        identity: AddIdentity,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Credential::Key { privkey, comment } = identity.credential {
+            let privkey = PrivateKey::try_from(privkey)?;
+            self.identity_add(Identity {
+                pubkey: PublicKey::from(&privkey),
+                privkey,
+                comment,
+            });
+            Ok(())
+        } else {
+            info!("Unsupported key type: {:#?}", identity.credential);
+            Ok(())
+        }
+    }
+
+    async fn add_identity_constrained(
+        &mut self,
+        identity: AddIdentityConstrained,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let AddIdentityConstrained {
+            identity,
+            constraints,
+        } = identity;
+        info!("Would use these constraints: {constraints:#?}");
+        for constraint in constraints {
+            if let KeyConstraint::Extension(name, mut details) = constraint {
+                if name == "restrict-destination-v00@openssh.com" {
+                    if let Ok(destination_constraint) = details.parse::<SessionBind>() {
+                        info!("Destination constraint: {destination_constraint:?}");
                     }
                 }
-                if let Credential::Key { privkey, comment } = identity.credential {
-                    let privkey = PrivateKey::try_from(privkey).unwrap();
+                if let Credential::Key { privkey, comment } = identity.credential.clone() {
+                    let privkey = PrivateKey::try_from(privkey)?;
                     self.identity_add(Identity {
                         pubkey: PublicKey::from(&privkey),
                         privkey,
                         comment,
                     });
                 }
-                Ok(Message::Success)
             }
-            Message::SignRequest(request) => {
-                let signature = self.sign(&request)?;
-                Ok(Message::SignResponse(signature))
-            }
-            Message::AddSmartcardKey(key) => {
-                println!("Adding smartcard key: {key:?}");
-                Ok(Message::Success)
-            }
-            Message::AddSmartcardKeyConstrained(key) => {
-                println!("Adding smartcard key with constraints: {key:?}");
-                Ok(Message::Success)
-            }
-            Message::Lock(pwd) => {
-                println!("Locked with password: {pwd:?}");
-                Ok(Message::Success)
-            }
-            Message::Unlock(pwd) => {
-                println!("Unlocked with password: {pwd:?}");
-                Ok(Message::Success)
-            }
-            Message::Extension(mut extension) => {
-                eprintln!("Extension: {extension:?}");
-                if extension.name == "session-bind@openssh.com" {
-                    let bind = extension.details.parse::<SessionBind>()?;
-                    eprintln!("Bind: {bind:?}");
-                }
-                Ok(Message::Success)
-            }
-            _ => Err(From::from(format!("Unknown message: {:?}", request))),
-        };
-        info!("Response {:?}", response);
-        response
+        }
+        self.add_identity(identity).await
     }
-}
 
-#[async_trait]
-impl Session for KeyStorage {
-    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>> {
-        self.handle_message(message)
+    async fn remove_identity(
+        &mut self,
+        identity: RemoveIdentity,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let pubkey: PublicKey = identity.pubkey.into();
+        self.identity_remove(&pubkey)?;
+        Ok(())
+    }
+
+    async fn add_smartcard_key(
+        &mut self,
+        key: SmartcardKey,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Adding smartcard key: {key:?}");
+
+        Ok(())
+    }
+
+    async fn add_smartcard_key_constrained(
+        &mut self,
+        key: AddSmartcardKeyConstrained,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Adding smartcard key with constraints: {key:?}");
+        Ok(())
+    }
+    async fn lock(&mut self, pwd: String) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Locked with password: {pwd:?}");
+        Ok(())
+    }
+
+    async fn unlock(&mut self, pwd: String) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Unlocked with password: {pwd:?}");
+        Ok(())
+    }
+
+    async fn extension(
+        &mut self,
+        mut extension: Extension,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Extension: {extension:?}");
+        if extension.name == "session-bind@openssh.com" {
+            let bind = extension.details.parse::<SessionBind>()?;
+            info!("Bind: {bind:?}");
+        }
+        Ok(())
     }
 }
 

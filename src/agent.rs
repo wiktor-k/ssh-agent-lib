@@ -1,66 +1,29 @@
 use std::fmt;
 use std::io;
-use std::marker::Unpin;
-use std::mem::size_of;
 
 use async_trait::async_trait;
-use byteorder::{BigEndian, ReadBytesExt};
 use futures::{SinkExt, TryStreamExt};
-use log::{error, info};
-use ssh_encoding::{Decode, Encode};
+use ssh_key::Signature;
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
-use tokio_util::bytes::{Buf, BufMut, BytesMut};
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
 
 use super::error::AgentError;
-use super::proto::{message::Message, ProtoError};
-
-#[derive(Debug)]
-pub struct MessageCodec;
-
-impl Decoder for MessageCodec {
-    type Item = Message;
-    type Error = AgentError;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let mut bytes = &src[..];
-
-        if bytes.len() < size_of::<u32>() {
-            return Ok(None);
-        }
-
-        let length = bytes.read_u32::<BigEndian>()? as usize;
-
-        if bytes.len() < length {
-            return Ok(None);
-        }
-
-        let message: Message = Message::decode(&mut bytes)?;
-        src.advance(size_of::<u32>() + length);
-        Ok(Some(message))
-    }
-}
-
-impl Encoder<Message> for MessageCodec {
-    type Error = AgentError;
-
-    fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let mut bytes = Vec::new();
-
-        let len = item.encoded_len().unwrap() as u32;
-        len.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
-
-        item.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
-        dst.put(&*bytes);
-
-        Ok(())
-    }
-}
+use super::proto::message::{Request, Response};
+use crate::codec::Codec;
+use crate::proto::AddIdentity;
+use crate::proto::AddIdentityConstrained;
+use crate::proto::AddSmartcardKeyConstrained;
+use crate::proto::Extension;
+use crate::proto::Identity;
+use crate::proto::ProtoError;
+use crate::proto::RemoveIdentity;
+use crate::proto::SignRequest;
+use crate::proto::SmartcardKey;
 
 #[async_trait]
 pub trait ListeningSocket {
@@ -118,11 +81,102 @@ impl ListeningSocket for NamedPipeListener {
 
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
-    async fn handle(&mut self, message: Message) -> Result<Message, Box<dyn std::error::Error>>;
+    async fn request_identities(&mut self) -> Result<Vec<Identity>, Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 11 }))
+    }
+
+    async fn sign(
+        &mut self,
+        _request: SignRequest,
+    ) -> Result<Signature, Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 13 }))
+    }
+
+    async fn add_identity(
+        &mut self,
+        _identity: AddIdentity,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 17 }))
+    }
+
+    async fn add_identity_constrained(
+        &mut self,
+        _identity: AddIdentityConstrained,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 25 }))
+    }
+
+    async fn remove_identity(
+        &mut self,
+        _identity: RemoveIdentity,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 18 }))
+    }
+
+    async fn remove_all_identities(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 19 }))
+    }
+
+    async fn add_smartcard_key(
+        &mut self,
+        _key: SmartcardKey,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 20 }))
+    }
+
+    async fn add_smartcard_key_constrained(
+        &mut self,
+        _key: AddSmartcardKeyConstrained,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 26 }))
+    }
+
+    async fn remove_smartcard_key(
+        &mut self,
+        _key: SmartcardKey,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 21 }))
+    }
+
+    async fn lock(&mut self, _key: String) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 22 }))
+    }
+
+    async fn unlock(&mut self, _key: String) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 23 }))
+    }
+
+    async fn extension(&mut self, _extension: Extension) -> Result<(), Box<dyn std::error::Error>> {
+        Err(Box::new(ProtoError::UnsupportedCommand { command: 27 }))
+    }
+
+    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>> {
+        match message {
+            Request::RequestIdentities => {
+                return Ok(Response::IdentitiesAnswer(self.request_identities().await?))
+            }
+            Request::SignRequest(request) => {
+                return Ok(Response::SignResponse(self.sign(request).await?))
+            }
+            Request::AddIdentity(identity) => self.add_identity(identity).await?,
+            Request::RemoveIdentity(identity) => self.remove_identity(identity).await?,
+            Request::RemoveAllIdentities => self.remove_all_identities().await?,
+            Request::AddSmartcardKey(key) => self.add_smartcard_key(key).await?,
+            Request::RemoveSmartcardKey(key) => self.remove_smartcard_key(key).await?,
+            Request::Lock(key) => self.lock(key).await?,
+            Request::Unlock(key) => self.unlock(key).await?,
+            Request::AddIdConstrained(identity) => self.add_identity_constrained(identity).await?,
+            Request::AddSmartcardKeyConstrained(key) => {
+                self.add_smartcard_key_constrained(key).await?
+            }
+            Request::Extension(extension) => self.extension(extension).await?,
+        }
+        Ok(Response::Success)
+    }
 
     async fn handle_socket<S>(
         &mut self,
-        mut adapter: Framed<S::Stream, MessageCodec>,
+        mut adapter: Framed<S::Stream, Codec<Request, Response>>,
     ) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
@@ -133,8 +187,8 @@ pub trait Session: 'static + Sync + Send + Sized {
                 let response = match self.handle(incoming_message).await {
                     Ok(message) => message,
                     Err(e) => {
-                        error!("Error handling message: {:?}", e);
-                        Message::Failure
+                        log::error!("Error handling message: {:?}", e);
+                        Response::Failure
                     }
                 };
                 log::debug!("Response: {response:?}");
@@ -156,20 +210,20 @@ pub trait Agent: 'static + Sync + Send + Sized {
     where
         S: ListeningSocket + fmt::Debug + Send,
     {
-        info!("Listening; socket = {:?}", socket);
+        log::info!("Listening; socket = {:?}", socket);
         loop {
             match socket.accept().await {
                 Ok(socket) => {
                     let mut session = self.new_session();
                     tokio::spawn(async move {
-                        let adapter = Framed::new(socket, MessageCodec);
+                        let adapter = Framed::new(socket, Codec::<Request, Response>::default());
                         if let Err(e) = session.handle_socket::<S>(adapter).await {
-                            error!("Agent protocol error: {:?}", e);
+                            log::error!("Agent protocol error: {:?}", e);
                         }
                     });
                 }
                 Err(e) => {
-                    error!("Failed to accept socket: {:?}", e);
+                    log::error!("Failed to accept socket: {:?}", e);
                     return Err(AgentError::IO(e));
                 }
             }

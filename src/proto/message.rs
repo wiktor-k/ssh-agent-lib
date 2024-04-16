@@ -466,54 +466,86 @@ impl Encode for Unparsed {
     }
 }
 
-pub type Passphrase = String;
-
 #[derive(Clone, PartialEq, Debug)]
-pub enum Message {
-    Failure,
-    Success,
+pub enum Request {
     RequestIdentities,
-    IdentitiesAnswer(Vec<Identity>),
     SignRequest(SignRequest),
-    SignResponse(Signature),
     AddIdentity(AddIdentity),
     RemoveIdentity(RemoveIdentity),
     RemoveAllIdentities,
     AddSmartcardKey(SmartcardKey),
     RemoveSmartcardKey(SmartcardKey),
-    Lock(Passphrase),
-    Unlock(Passphrase),
+    Lock(String),
+    Unlock(String),
     AddIdConstrained(AddIdentityConstrained),
     AddSmartcardKeyConstrained(AddSmartcardKeyConstrained),
     Extension(Extension),
-    ExtensionFailure,
 }
 
-impl Message {
+#[derive(Clone, PartialEq, Debug)]
+pub enum Response {
+    Failure,
+    Success,
+    IdentitiesAnswer(Vec<Identity>),
+    SignResponse(Signature),
+    ExtensionFailure,
+}
+impl Request {
     pub fn message_id(&self) -> u8 {
         match self {
-            Message::Failure => 5,
-            Message::Success => 6,
-            Message::RequestIdentities => 11,
-            Message::IdentitiesAnswer(_) => 12,
-            Message::SignRequest(_) => 13,
-            Message::SignResponse(_) => 14,
-            Message::AddIdentity(_) => 17,
-            Message::RemoveIdentity(_) => 18,
-            Message::RemoveAllIdentities => 19,
-            Message::AddSmartcardKey(_) => 20,
-            Message::RemoveSmartcardKey(_) => 21,
-            Message::Lock(_) => 22,
-            Message::Unlock(_) => 23,
-            Message::AddIdConstrained(_) => 25,
-            Message::AddSmartcardKeyConstrained(_) => 26,
-            Message::Extension(_) => 27,
-            Message::ExtensionFailure => 28,
+            Self::RequestIdentities => 11,
+            Self::SignRequest(_) => 13,
+            Self::AddIdentity(_) => 17,
+            Self::RemoveIdentity(_) => 18,
+            Self::RemoveAllIdentities => 19,
+            Self::AddSmartcardKey(_) => 20,
+            Self::RemoveSmartcardKey(_) => 21,
+            Self::Lock(_) => 22,
+            Self::Unlock(_) => 23,
+            Self::AddIdConstrained(_) => 25,
+            Self::AddSmartcardKeyConstrained(_) => 26,
+            Self::Extension(_) => 27,
         }
     }
 }
 
-impl Decode for Message {
+impl Response {
+    pub fn message_id(&self) -> u8 {
+        match self {
+            Self::Failure => 5,
+            Self::Success => 6,
+            Self::IdentitiesAnswer(_) => 12,
+            Self::SignResponse(_) => 14,
+            Self::ExtensionFailure => 28,
+        }
+    }
+}
+
+impl Decode for Request {
+    type Error = ProtoError;
+
+    fn decode(reader: &mut impl Reader) -> Result<Self> {
+        let message_type = u8::decode(reader)?;
+
+        match message_type {
+            11 => Ok(Self::RequestIdentities),
+            13 => SignRequest::decode(reader).map(Self::SignRequest),
+            17 => AddIdentity::decode(reader).map(Self::AddIdentity),
+            18 => RemoveIdentity::decode(reader).map(Self::RemoveIdentity),
+            19 => Ok(Self::RemoveAllIdentities),
+            20 => SmartcardKey::decode(reader).map(Self::AddSmartcardKey),
+            21 => SmartcardKey::decode(reader).map(Self::RemoveSmartcardKey),
+            22 => Ok(String::decode(reader).map(Self::Lock)?),
+            23 => Ok(String::decode(reader).map(Self::Unlock)?),
+            25 => AddIdentityConstrained::decode(reader).map(Self::AddIdConstrained),
+            26 => AddSmartcardKeyConstrained::decode(reader).map(Self::AddSmartcardKeyConstrained),
+            27 => Extension::decode(reader).map(Self::Extension),
+            command => Err(ProtoError::UnsupportedCommand { command }),
+        }
+    }
+}
+
+impl Decode for Response {
     type Error = ProtoError;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
@@ -522,36 +554,66 @@ impl Decode for Message {
         match message_type {
             5 => Ok(Self::Failure),
             6 => Ok(Self::Success),
-            11 => Ok(Self::RequestIdentities),
             12 => Identity::decode_vec(reader).map(Self::IdentitiesAnswer),
-            13 => SignRequest::decode(reader).map(Self::SignRequest),
             14 => {
                 Ok(reader
                     .read_prefixed(|reader| Signature::decode(reader).map(Self::SignResponse))?)
             }
-            17 => AddIdentity::decode(reader).map(Self::AddIdentity),
-            18 => RemoveIdentity::decode(reader).map(Self::RemoveIdentity),
-            19 => Ok(Self::RemoveAllIdentities),
-            20 => SmartcardKey::decode(reader).map(Self::AddSmartcardKey),
-            21 => SmartcardKey::decode(reader).map(Self::RemoveSmartcardKey),
-            22 => Ok(Passphrase::decode(reader).map(Self::Lock)?),
-            23 => Ok(Passphrase::decode(reader).map(Self::Unlock)?),
-            25 => AddIdentityConstrained::decode(reader).map(Self::AddIdConstrained),
-            26 => AddSmartcardKeyConstrained::decode(reader).map(Self::AddSmartcardKeyConstrained),
-            27 => Extension::decode(reader).map(Self::Extension),
             28 => Ok(Self::ExtensionFailure),
             command => Err(ProtoError::UnsupportedCommand { command }),
         }
     }
 }
 
-impl Encode for Message {
+impl Encode for Request {
+    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
+        let message_id_len = 1;
+        let payload_len = match self {
+            Self::RequestIdentities => 0,
+            Self::SignRequest(request) => request.encoded_len()?,
+            Self::AddIdentity(identity) => identity.encoded_len()?,
+            Self::RemoveIdentity(identity) => identity.encoded_len()?,
+            Self::RemoveAllIdentities => 0,
+            Self::AddSmartcardKey(key) => key.encoded_len()?,
+            Self::RemoveSmartcardKey(key) => key.encoded_len()?,
+            Self::Lock(passphrase) => passphrase.encoded_len()?,
+            Self::Unlock(passphrase) => passphrase.encoded_len()?,
+            Self::AddIdConstrained(key) => key.encoded_len()?,
+            Self::AddSmartcardKeyConstrained(key) => key.encoded_len()?,
+            Self::Extension(extension) => extension.encoded_len()?,
+        };
+
+        [message_id_len, payload_len].checked_sum()
+    }
+
+    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
+        let message_id: u8 = self.message_id();
+        message_id.encode(writer)?;
+
+        match self {
+            Self::RequestIdentities => {}
+            Self::SignRequest(request) => request.encode(writer)?,
+            Self::AddIdentity(identity) => identity.encode(writer)?,
+            Self::RemoveIdentity(identity) => identity.encode(writer)?,
+            Self::RemoveAllIdentities => {}
+            Self::AddSmartcardKey(key) => key.encode(writer)?,
+            Self::RemoveSmartcardKey(key) => key.encode(writer)?,
+            Self::Lock(passphrase) => passphrase.encode(writer)?,
+            Self::Unlock(passphrase) => passphrase.encode(writer)?,
+            Self::AddIdConstrained(identity) => identity.encode(writer)?,
+            Self::AddSmartcardKeyConstrained(key) => key.encode(writer)?,
+            Self::Extension(extension) => extension.encode(writer)?,
+        };
+
+        Ok(())
+    }
+}
+impl Encode for Response {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
         let message_id_len = 1;
         let payload_len = match self {
             Self::Failure => 0,
             Self::Success => 0,
-            Self::RequestIdentities => 0,
             Self::IdentitiesAnswer(ids) => {
                 let mut lengths = Vec::with_capacity(1 + ids.len());
                 // Prefixed length
@@ -563,18 +625,7 @@ impl Encode for Message {
 
                 lengths.checked_sum()?
             }
-            Self::SignRequest(request) => request.encoded_len()?,
             Self::SignResponse(response) => response.encoded_len_prefixed()?,
-            Self::AddIdentity(identity) => identity.encoded_len()?,
-            Self::RemoveIdentity(identity) => identity.encoded_len()?,
-            Self::RemoveAllIdentities => 0,
-            Self::AddSmartcardKey(key) => key.encoded_len()?,
-            Self::RemoveSmartcardKey(key) => key.encoded_len()?,
-            Self::Lock(passphrase) => passphrase.encoded_len()?,
-            Self::Unlock(passphrase) => passphrase.encoded_len()?,
-            Self::AddIdConstrained(key) => key.encoded_len()?,
-            Self::AddSmartcardKeyConstrained(key) => key.encoded_len()?,
-            Self::Extension(extension) => extension.encoded_len()?,
             Self::ExtensionFailure => 0,
         };
 
@@ -588,25 +639,13 @@ impl Encode for Message {
         match self {
             Self::Failure => {}
             Self::Success => {}
-            Self::RequestIdentities => {}
             Self::IdentitiesAnswer(ids) => {
                 (ids.len() as u32).encode(writer)?;
                 for id in ids {
                     id.encode(writer)?;
                 }
             }
-            Self::SignRequest(request) => request.encode(writer)?,
             Self::SignResponse(response) => response.encode_prefixed(writer)?,
-            Self::AddIdentity(identity) => identity.encode(writer)?,
-            Self::RemoveIdentity(identity) => identity.encode(writer)?,
-            Self::RemoveAllIdentities => {}
-            Self::AddSmartcardKey(key) => key.encode(writer)?,
-            Self::RemoveSmartcardKey(key) => key.encode(writer)?,
-            Self::Lock(passphrase) => passphrase.encode(writer)?,
-            Self::Unlock(passphrase) => passphrase.encode(writer)?,
-            Self::AddIdConstrained(identity) => identity.encode(writer)?,
-            Self::AddSmartcardKeyConstrained(key) => key.encode(writer)?,
-            Self::Extension(extension) => extension.encode(writer)?,
             Self::ExtensionFailure => {}
         };
 
@@ -858,9 +897,9 @@ mod tests {
         );
         let mut reader = msg;
 
-        let out = Message::decode(&mut reader).expect("parse message");
+        let out = Response::decode(&mut reader).expect("parse message");
 
-        let expected = Message::IdentitiesAnswer(vec![Identity {
+        let expected = Response::IdentitiesAnswer(vec![Identity {
             pubkey: KeyData::Ecdsa(demo_key().into()),
             comment: "baloo@angela".to_string(),
         }]);
@@ -947,7 +986,7 @@ mod tests {
         );
         let mut reader = msg;
 
-        let out = Message::decode(&mut reader).expect("parse message");
+        let out = Request::decode(&mut reader).expect("parse message");
 
         let certificate = &hex!(
             "
@@ -985,7 +1024,7 @@ mod tests {
         let mut reader = certificate;
         let certificate = Certificate::decode(&mut reader).unwrap();
 
-        let expected = Message::AddIdConstrained(AddIdentityConstrained {
+        let expected = Request::AddIdConstrained(AddIdentityConstrained {
             identity: AddIdentity {
                 credential: Credential::Cert {
                     algorithm: Algorithm::new("ssh-rsa").unwrap(),
