@@ -3,7 +3,7 @@
 set -euxo pipefail
 
 rm -rf ssh-agent.sock Cargo.toml.sig id_rsa id_rsa.pub agent.pub ca_user_key ca_user_key.pub id_rsa-cert.pub
-cargo run --example key_storage &
+RUST_LOG=info cargo run --example key_storage &
 
 while [ ! -e ssh-agent.sock ]; do
   echo "Waiting for ssh-agent.sock"

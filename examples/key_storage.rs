@@ -2,6 +2,7 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
+use log::info;
 use rsa::pkcs1v15::SigningKey;
 use rsa::sha2::{Sha256, Sha512};
 use rsa::signature::{RandomizedSigner, SignatureEncoding};
@@ -141,7 +142,7 @@ impl Session for KeyStorage {
             });
             Ok(())
         } else {
-            eprintln!("Unsupported key type: {:#?}", identity.credential);
+            info!("Unsupported key type: {:#?}", identity.credential);
             Ok(())
         }
     }
@@ -154,12 +155,12 @@ impl Session for KeyStorage {
             identity,
             constraints,
         } = identity;
-        eprintln!("Would use these constraints: {constraints:#?}");
+        info!("Would use these constraints: {constraints:#?}");
         for constraint in constraints {
             if let KeyConstraint::Extension(name, mut details) = constraint {
                 if name == "restrict-destination-v00@openssh.com" {
                     if let Ok(destination_constraint) = details.parse::<SessionBind>() {
-                        eprintln!("Destination constraint: {destination_constraint:?}");
+                        info!("Destination constraint: {destination_constraint:?}");
                     }
                 }
                 if let Credential::Key { privkey, comment } = identity.credential.clone() {
@@ -188,7 +189,7 @@ impl Session for KeyStorage {
         &mut self,
         key: SmartcardKey,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Adding smartcard key: {key:?}");
+        info!("Adding smartcard key: {key:?}");
 
         Ok(())
     }
@@ -197,16 +198,16 @@ impl Session for KeyStorage {
         &mut self,
         key: AddSmartcardKeyConstrained,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Adding smartcard key with constraints: {key:?}");
+        info!("Adding smartcard key with constraints: {key:?}");
         Ok(())
     }
     async fn lock(&mut self, pwd: String) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Locked with password: {pwd:?}");
+        info!("Locked with password: {pwd:?}");
         Ok(())
     }
 
     async fn unlock(&mut self, pwd: String) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Unlocked with password: {pwd:?}");
+        info!("Unlocked with password: {pwd:?}");
         Ok(())
     }
 
@@ -214,10 +215,10 @@ impl Session for KeyStorage {
         &mut self,
         mut extension: Extension,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        eprintln!("Extension: {extension:?}");
+        info!("Extension: {extension:?}");
         if extension.name == "session-bind@openssh.com" {
             let bind = extension.details.parse::<SessionBind>()?;
-            eprintln!("Bind: {bind:?}");
+            info!("Bind: {bind:?}");
         }
         Ok(())
     }
