@@ -14,6 +14,8 @@ pub enum ProtoError {
     SshKey(#[from] ssh_key::Error),
     #[error("Command not supported ({command})")]
     UnsupportedCommand { command: u8 },
+    #[error("Unexpected response received")]
+    UnexpectedResponse,
 }
 
 pub type ProtoResult<T> = Result<T, ProtoError>;
