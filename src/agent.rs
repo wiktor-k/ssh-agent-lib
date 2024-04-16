@@ -91,7 +91,7 @@ impl ListeningSocket for NamedPipeListener {
 /// This type is implemented by agents that want to handle incoming SSH agent
 /// connections.
 #[async_trait]
-pub trait Session: 'static + Sync + Send + Sized {
+pub trait Session: 'static + Sync + Send + Unpin {
     /// Request a list of keys managed by this session.
     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
