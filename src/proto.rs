@@ -1,3 +1,5 @@
+//! SSH agent protocol structures
+
 pub mod error;
 pub mod extension;
 pub mod message;

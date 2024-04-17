@@ -1,3 +1,5 @@
+//! Agent protocol message structures.
+
 use core::str::FromStr;
 
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
@@ -9,9 +11,17 @@ use super::{PrivateKeyData, ProtoError};
 
 type Result<T> = core::result::Result<T, ProtoError>;
 
+/// Data returned to the client when listing keys.
+///
+/// A list of these structures are sent in a [`Response::IdentitiesAnswer`] (`SSH_AGENT_IDENTITIES_ANSWER`) message body.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.5](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.5)
 #[derive(Clone, PartialEq, Debug)]
 pub struct Identity {
+    /// A standard public-key encoding of an underlying key.
     pub pubkey: KeyData,
+
+    /// A human-readable comment
     pub comment: String,
 }
 
@@ -56,10 +66,21 @@ impl Encode for Identity {
     }
 }
 
+/// Signature request with data to be signed with a key in an agent.
+///
+/// This structure is sent in a [`Request::SignRequest`] (`SSH_AGENTC_SIGN_REQUEST`) message.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.6](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.6)
 #[derive(Clone, PartialEq, Debug)]
 pub struct SignRequest {
+    /// The public key portion of the [`Identity`] in the agent to sign the data with
     pub pubkey: KeyData,
+
+    /// Binary data to be signed
     pub data: Vec<u8>,
+
+    /// Signature flags, as described in
+    /// [draft-miller-ssh-agent-14 § 3.6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.6.1)
     pub flags: u32,
 }
 
@@ -98,12 +119,23 @@ impl Encode for SignRequest {
     }
 }
 
+/// A container for a public / private key pair, or a certificate / private key.
+///
+/// When adding an identity to an agent, a user can provide either:
+/// 1. A public / private key pair
+/// 2. An OpenSSH [certificate](https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.certkeys)
+///
+/// This structure covers both types of identities a user may
+/// send to an agent as part of a [`Request::AddIdentity`] message.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Credential {
+    /// A public/private key pair
     Key {
         privkey: KeypairData,
         comment: String,
     },
+
+    /// An OpenSSH [certificate](https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.certkeys)
     Cert {
         algorithm: Algorithm,
         certificate: Certificate,
@@ -184,8 +216,14 @@ impl Encode for Credential {
     }
 }
 
+/// Add a key to an agent.
+///
+/// This structure is sent in a [`Request::AddIdentity`] (`SSH_AGENTC_ADD_IDENTITY`) message.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.2](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2)
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentity {
+    /// A credential (private & public key, or private key / certificate) to add to the agent
     pub credential: Credential,
 }
 
@@ -209,9 +247,19 @@ impl Encode for AddIdentity {
     }
 }
 
+/// Add a key to an agent, with constraints on it's use.
+///
+/// This structure is sent in a [`Request::AddIdConstrained`] (`SSH_AGENTC_ADD_ID_CONSTRAINED`) message.
+///
+/// This is a variant of [`Request::AddIdentity`] with a set of [`KeyConstraint`]s attached.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.2](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2)
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentityConstrained {
+    /// The credential to be added to the agent.
     pub identity: AddIdentity,
+
+    /// Constraints to be placed on the `identity`.
     pub constraints: Vec<KeyConstraint>,
 }
 
@@ -252,8 +300,14 @@ impl Encode for AddIdentityConstrained {
     }
 }
 
+/// Remove a key from an agent.
+///
+/// This structure is sent in a [`Request::RemoveIdentity`] (`SSH_AGENTC_REMOVE_IDENTITY`) message.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.4](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.4)
 #[derive(Clone, PartialEq, Debug)]
 pub struct RemoveIdentity {
+    /// The public key portion of the [`Identity`] to be removed
     pub pubkey: KeyData,
 }
 
@@ -277,9 +331,20 @@ impl Encode for RemoveIdentity {
     }
 }
 
+/// Pointer to a key in a hardware token, along with an optional PIN.
+///
+/// This structure is sent in a [`Request::AddSmartcardKey`] (`SSH_AGENTC_ADD_SMARTCARD_KEY`) message.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.2](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2)
 #[derive(Clone, PartialEq, Debug)]
 pub struct SmartcardKey {
+    /// An opaque identifier for the hardware token
+    ///
+    /// Note: the interpretation of "id" is not defined by the protocol,
+    /// but is left solely up to the agent.
     pub id: String,
+
+    /// An optional password to unlock the key
     pub pin: String,
 }
 
@@ -307,10 +372,30 @@ impl Encode for SmartcardKey {
     }
 }
 
+/// A key constraint, used to place limitations on how and where a key can be used.
+///
+/// Key constraints are set along with a key when are added to an agent.
+///
+/// Specifically, they appear in special `SSH_AGENTC_ADD_*` message variants:
+/// - [`Request::AddIdConstrained`]
+/// - [`Request::AddSmartcardKeyConstrained`]
 #[derive(Clone, PartialEq, Debug)]
 pub enum KeyConstraint {
+    /// Limit the key's lifetime by deleting it after the specified duration (in seconds)
     Lifetime(u32),
+
+    /// Require explicit user confirmation for each private key operation using the key.
     Confirm,
+
+    /// Experimental or private-use constraints
+    ///
+    /// Contains:
+    /// - An extension name indicating the type of the constraint (as a UTF-8 string).
+    /// - Extension-specific content
+    ///
+    /// Extension names should be suffixed by the implementation domain
+    /// as per [RFC4251 § 4.2](https://www.rfc-editor.org/rfc/rfc4251.html#section-4.2),
+    /// e.g. "foo@example.com"
     Extension(String, Unparsed),
 }
 
@@ -364,9 +449,19 @@ impl Encode for KeyConstraint {
     }
 }
 
+/// Add a key in a hardware token to an agent, with constraints on it's use.
+///
+/// This structure is sent in a [`Request::AddSmartcardKeyConstrained`] (`SSH_AGENTC_ADD_SMARTCARD_KEY_CONSTRAINED`) message.
+///
+/// This is a variant of [`Request::AddSmartcardKey`] with a set of [`KeyConstraint`]s attached.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.2.6](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2.6)
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddSmartcardKeyConstrained {
+    /// A key stored on a hardware token.
     pub key: SmartcardKey,
+
+    /// Constraints to be placed on the `key`.
     pub constraints: Vec<KeyConstraint>,
 }
 
@@ -403,9 +498,21 @@ impl Encode for AddSmartcardKeyConstrained {
     }
 }
 
+/// Container for SSH agent protocol extension messages
+///
+/// This structure is sent as part of a [`Request::Extension`] (`SSH_AGENT_EXTENSION_RESPONSE`) message.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.8](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.8).
 #[derive(Clone, PartialEq, Debug)]
 pub struct Extension {
+    /// Indicates the type of the extension message (as a UTF-8 string)
+    ///
+    /// Extension names should be suffixed by the implementation domain
+    /// as per [RFC4251 § 4.2](https://www.rfc-editor.org/rfc/rfc4251.html#section-4.2),
+    /// e.g. "foo@example.com"
     pub name: String,
+
+    /// Extension-specific content
     pub details: Unparsed,
 }
 
@@ -431,12 +538,14 @@ impl Encode for Extension {
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
         self.name.encode(writer)?;
 
-        // NOTE: extension messages do not contain a length!
+        // NOTE: extension messages do not contain a length,
+        // as the inner Vec<u8> will be encoded with it's own length.
         writer.write(&self.details.0[..])?;
         Ok(())
     }
 }
 
+/// Generic container for [`Extension`]-specific content
 #[derive(Debug, PartialEq, Clone)]
 pub struct Unparsed(pub Vec<u8>);
 
@@ -466,31 +575,86 @@ impl Encode for Unparsed {
     }
 }
 
+/// SSH agent protocol request messages.
+///
+/// These message types are sent from a client *to* an agent.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
 #[derive(Clone, PartialEq, Debug)]
 pub enum Request {
+    /// Request a list of all identities (public key/certificate & comment)
+    /// from an agent
     RequestIdentities,
+
+    /// Perform a private key signature operation using a key
+    /// stored in the agent
     SignRequest(SignRequest),
+
+    /// Add an identity (private key/certificate & comment) to an agent
     AddIdentity(AddIdentity),
+
+    /// Remove an identity from an agent
     RemoveIdentity(RemoveIdentity),
+
+    /// Remove all identities from an agent
     RemoveAllIdentities,
+
+    /// Add an identity (private key/certificate & comment) to an agent
+    /// where the private key is stored on a hardware token
     AddSmartcardKey(SmartcardKey),
+
+    /// Remove a key stored on a hardware token from an agent
     RemoveSmartcardKey(SmartcardKey),
+
+    /// Temporarily lock an agent with a pass-phrase
     Lock(String),
+
+    /// Unlock a locked agaent with a pass-phrase
     Unlock(String),
+
+    /// Add an identity (private key/certificate & comment) to an agent,
+    /// with constraints on it's usage
     AddIdConstrained(AddIdentityConstrained),
+
+    /// Add an identity (private key/certificate & comment) to an agent
+    /// where the private key is stored on a hardware token,
+    /// with constraints on it's usage
     AddSmartcardKeyConstrained(AddSmartcardKeyConstrained),
+
+    /// Send a vendor-specific message via the agent protocol,
+    /// identified by an *extension type*.
     Extension(Extension),
 }
 
+/// SSH agent protocol response messages.
+///
+/// These message types are sent to a client *from* an agent (in response to a [`Request`] message).
+///
+/// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
 #[derive(Clone, PartialEq, Debug)]
 pub enum Response {
+    /// Indicates generic agent failure
     Failure,
+
+    /// Indicates generic agent success
     Success,
+
+    /// A list of identities, sent in response to
+    /// a [`Request::RequestIdentities`] message.
     IdentitiesAnswer(Vec<Identity>),
+
+    /// A signature, sent in response to
+    /// a [`Request::SignRequest`] message.
     SignResponse(Signature),
+
+    /// Indicates generic extension failure
     ExtensionFailure,
 }
+
 impl Request {
+    /// The protocol message identifier for a given [`Request`] message type.
+    ///
+    /// Described in [draft-miller-ssh-agent-14 § 6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-6.1).
     pub fn message_id(&self) -> u8 {
         match self {
             Self::RequestIdentities => 11,
@@ -510,6 +674,9 @@ impl Request {
 }
 
 impl Response {
+    /// The protocol message identifier for a given [`Response`] message type.
+    ///
+    /// Described in [draft-miller-ssh-agent-14 § 6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-6.1).
     pub fn message_id(&self) -> u8 {
         match self {
             Self::Failure => 5,
@@ -608,6 +775,7 @@ impl Encode for Request {
         Ok(())
     }
 }
+
 impl Encode for Response {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
         let message_id_len = 1;

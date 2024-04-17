@@ -1,3 +1,5 @@
+//! Agent protocol errors.
+
 use std::{io, string};
 
 use thiserror::Error;

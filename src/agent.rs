@@ -1,3 +1,5 @@
+//! Traits for implementing custom SSH agents
+
 use std::fmt;
 use std::io;
 

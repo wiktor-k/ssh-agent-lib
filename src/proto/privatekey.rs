@@ -1,3 +1,5 @@
+//! Types for handling SSH private key data.
+
 use core::fmt;
 
 use ssh_encoding::{Decode, Encode, Reader, Writer};
@@ -80,6 +82,7 @@ impl Encode for EcdsaPrivateKey {
     }
 }
 
+/// Private key data stored within a `Credential` object
 #[derive(Clone)]
 #[non_exhaustive]
 pub enum PrivateKeyData {
@@ -93,6 +96,7 @@ pub enum PrivateKeyData {
     // algorithm that will always encode the full key pair.
     /// Ed25519 key pair.
     Ed25519(Ed25519Keypair),
+
     /// RSA private key.
     Rsa(RsaPrivateKey),
 }
