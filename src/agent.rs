@@ -80,7 +80,7 @@ impl ListeningSocket for NamedPipeListener {
 }
 
 #[async_trait]
-pub trait Session: 'static + Sync + Send + Sized {
+pub trait Session: 'static + Sync + Send + Unpin {
     async fn request_identities(&mut self) -> Result<Vec<Identity>, Box<dyn std::error::Error>> {
         Err(Box::new(ProtoError::UnsupportedCommand { command: 11 }))
     }

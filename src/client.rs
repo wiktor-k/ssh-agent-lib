@@ -31,6 +31,46 @@ where
     }
 }
 
+pub async fn connect(
+    stream: service_binding::Stream,
+) -> Result<std::pin::Pin<Box<dyn crate::agent::Session>>, Box<dyn std::error::Error>> {
+    match stream {
+        #[cfg(unix)]
+        service_binding::Stream::Unix(stream) => {
+            let stream = tokio::net::UnixStream::from_std(stream)?;
+            Ok(Box::pin(Client::new(stream)))
+        }
+        service_binding::Stream::Tcp(stream) => {
+            let stream = tokio::net::TcpStream::from_std(stream)?;
+            Ok(Box::pin(Client::new(stream)))
+        }
+        #[cfg(windows)]
+        service_binding::Stream::NamedPipe(pipe) => {
+            use tokio::net::windows::named_pipe::ClientOptions;
+            let stream = loop {
+                // https://docs.rs/windows-sys/latest/windows_sys/Win32/Foundation/constant.ERROR_PIPE_BUSY.html
+                const ERROR_PIPE_BUSY: u32 = 231u32;
+
+                // correct way to do it taken from
+                // https://docs.rs/tokio/latest/tokio/net/windows/named_pipe/struct.NamedPipeClient.html
+                match ClientOptions::new().open(std::env::var("SSH_AUTH_SOCK")?) {
+                    Ok(client) => break client,
+                    Err(e) if e.raw_os_error() == Some(ERROR_PIPE_BUSY as i32) => (),
+                    Err(e) => Err(e)?,
+                }
+
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            };
+            Ok(Box::pin(Client::new(stream)))
+        }
+        #[cfg(not(windows))]
+        service_binding::Stream::NamedPipe(_) => Err(ProtoError::IO(std::io::Error::other(
+            "Named pipes supported on Windows only",
+        ))
+        .into()),
+    }
+}
+
 #[async_trait::async_trait]
 impl<Stream> crate::agent::Session for Client<Stream>
 where
