@@ -4,8 +4,6 @@ description = "A collection of types for writing custom SSH agents"
 version = "0.4.0"
 license = "MIT OR Apache-2.0"
 authors = [
-    "Nicolas Trippar <ntrippar@gmail.com>",
-    "Federico Pomar <fmpomar@users.noreply.github.com>",
     "Wiktor Kwapisiewicz <wiktor@metacode.biz>"
 ]
 repository = "https://github.com/wiktor-k/ssh-agent-lib"
