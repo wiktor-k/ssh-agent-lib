@@ -173,32 +173,32 @@ pub trait Session: 'static + Sync + Send + Sized {
         }
         Ok(Response::Success)
     }
+}
 
-    async fn handle_socket<S>(
-        &mut self,
-        mut adapter: Framed<S::Stream, Codec<Request, Response>>,
-    ) -> Result<(), AgentError>
-    where
-        S: ListeningSocket + fmt::Debug + Send,
-    {
-        loop {
-            if let Some(incoming_message) = adapter.try_next().await? {
-                log::debug!("Request: {incoming_message:?}");
-                let response = match self.handle(incoming_message).await {
-                    Ok(message) => message,
-                    Err(e) => {
-                        log::error!("Error handling message: {:?}", e);
-                        Response::Failure
-                    }
-                };
-                log::debug!("Response: {response:?}");
+async fn handle_socket<S>(
+    mut session: impl Session,
+    mut adapter: Framed<S::Stream, Codec<Request, Response>>,
+) -> Result<(), AgentError>
+where
+    S: ListeningSocket + fmt::Debug + Send,
+{
+    loop {
+        if let Some(incoming_message) = adapter.try_next().await? {
+            log::debug!("Request: {incoming_message:?}");
+            let response = match session.handle(incoming_message).await {
+                Ok(message) => message,
+                Err(e) => {
+                    log::error!("Error handling message: {:?}", e);
+                    Response::Failure
+                }
+            };
+            log::debug!("Response: {response:?}");
 
-                adapter.send(response).await?;
-            } else {
-                // Reached EOF of the stream (client disconnected),
-                // we can close the socket and exit the handler.
-                return Ok(());
-            }
+            adapter.send(response).await?;
+        } else {
+            // Reached EOF of the stream (client disconnected),
+            // we can close the socket and exit the handler.
+            return Ok(());
         }
     }
 }
@@ -214,10 +214,10 @@ pub trait Agent: 'static + Sync + Send + Sized {
         loop {
             match socket.accept().await {
                 Ok(socket) => {
-                    let mut session = self.new_session();
+                    let session = self.new_session();
                     tokio::spawn(async move {
                         let adapter = Framed::new(socket, Codec::<Request, Response>::default());
-                        if let Err(e) = session.handle_socket::<S>(adapter).await {
+                        if let Err(e) = handle_socket::<S>(session, adapter).await {
                             log::error!("Agent protocol error: {:?}", e);
                         }
                     });
