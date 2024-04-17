@@ -3,8 +3,45 @@
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
 use ssh_key::{public::KeyData, Signature};
 
+use super::ProtoError;
+
 // Reserved fields are marked with an empty string
 const RESERVED_FIELD: &str = "";
+
+/// `session-bind@openssh.com` message extension.
+/// `query` message extension
+///
+/// An optional extension request "query" is
+/// defined to allow a client to query which, if any,
+/// extensions are supported by an agent.
+///
+/// Spec:
+/// <https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#name-query-extension>
+#[derive(Debug, Clone)]
+pub struct QueryResponse {
+    /// List of supported message extension names
+    pub extensions: Vec<String>,
+}
+
+impl Encode for QueryResponse {
+    fn encoded_len(&self) -> Result<usize, ssh_encoding::Error> {
+        self.extensions.encoded_len()
+    }
+
+    fn encode(&self, writer: &mut impl ssh_encoding::Writer) -> Result<(), ssh_encoding::Error> {
+        self.extensions.encode(writer)
+    }
+}
+
+impl Decode for QueryResponse {
+    type Error = ProtoError;
+
+    fn decode(reader: &mut impl Reader) -> Result<Self, Self::Error> {
+        let extensions = Vec::<String>::decode(reader)?;
+
+        Ok(Self { extensions })
+    }
+}
 
 /// `session-bind@openssh.com` message extension.
 ///

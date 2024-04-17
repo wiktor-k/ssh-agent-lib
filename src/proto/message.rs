@@ -526,6 +526,22 @@ pub struct Extension {
     pub details: Unparsed,
 }
 
+impl Extension {
+    /// Create a new Extension object from a
+    /// structure implementing [`ssh_encoding::Encode`]
+    pub fn new<T>(name: String, data: T) -> Result<Self>
+    where
+        T: Encode,
+    {
+        let mut buffer: Vec<u8> = vec![];
+        data.encode(&mut buffer)?;
+        Ok(Self {
+            name,
+            details: Unparsed(buffer),
+        })
+    }
+}
+
 impl Decode for Extension {
     type Error = ProtoError;
 
@@ -660,6 +676,10 @@ pub enum Response {
 
     /// Indicates generic extension failure
     ExtensionFailure,
+
+    /// Send a vendor-specific response message via the agent protocol,
+    /// identified by an *extension type*.
+    ExtensionResponse(Extension),
 }
 
 impl Request {
@@ -695,6 +715,7 @@ impl Response {
             Self::IdentitiesAnswer(_) => 12,
             Self::SignResponse(_) => 14,
             Self::ExtensionFailure => 28,
+            Self::ExtensionResponse(_) => 29,
         }
     }
 }
@@ -738,6 +759,7 @@ impl Decode for Response {
                     .read_prefixed(|reader| Signature::decode(reader).map(Self::SignResponse))?)
             }
             28 => Ok(Self::ExtensionFailure),
+            29 => Extension::decode(reader).map(Self::ExtensionResponse),
             command => Err(ProtoError::UnsupportedCommand { command }),
         }
     }
@@ -806,6 +828,7 @@ impl Encode for Response {
             }
             Self::SignResponse(response) => response.encoded_len_prefixed()?,
             Self::ExtensionFailure => 0,
+            Self::ExtensionResponse(extension) => extension.encoded_len()?,
         };
 
         [message_id_len, payload_len].checked_sum()
@@ -826,6 +849,7 @@ impl Encode for Response {
             }
             Self::SignResponse(response) => response.encode_prefixed(writer)?,
             Self::ExtensionFailure => {}
+            Self::ExtensionResponse(extension) => extension.encode(writer)?,
         };
 
         Ok(())
