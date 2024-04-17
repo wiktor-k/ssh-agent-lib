@@ -11,10 +11,10 @@ use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::Session;
-use ssh_agent_lib::proto::extension::SessionBind;
+use ssh_agent_lib::proto::extension::{QueryResponse, SessionBind};
 use ssh_agent_lib::proto::{
     message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
-    Credential, Extension, KeyConstraint, RemoveIdentity, SignRequest, SmartcardKey,
+    Credential, Extension, KeyConstraint, ProtoError, RemoveIdentity, SignRequest, SmartcardKey,
 };
 use ssh_agent_lib::Agent;
 use ssh_key::{
@@ -214,13 +214,31 @@ impl Session for KeyStorage {
     async fn extension(
         &mut self,
         mut extension: Extension,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Option<Extension>, Box<dyn std::error::Error>> {
         info!("Extension: {extension:?}");
-        if extension.name == "session-bind@openssh.com" {
-            let bind = extension.details.parse::<SessionBind>()?;
-            info!("Bind: {bind:?}");
+
+        match extension.name.as_str() {
+            "query" => {
+                let response = QueryResponse {
+                    extensions: vec!["query".into(), "session-bind@openssh.com".into()],
+                };
+
+                // Respond with an `SSH_AGENT_EXTENSION_RESPONSE`
+                Ok(Some(Extension::new("query".into(), response)?))
+            }
+            "session-bind@openssh.com" => {
+                let bind = extension.details.parse::<SessionBind>()?;
+                info!("Bind: {bind:?}");
+
+                // Respond with `SSH_AGENT_SUCCESS`
+                Ok(None)
+            }
+
+            // TODO: determine best way to return
+            // `SSH_AGENT_EXTENSION_FAILURE` or `SSH_AGENT_FAILURE`
+            // here
+            _ => Err(Box::new(ProtoError::UnsupportedCommand { command: 27 })),
         }
-        Ok(())
     }
 }
 

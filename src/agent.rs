@@ -146,7 +146,10 @@ pub trait Session: 'static + Sync + Send + Sized {
         Err(Box::new(ProtoError::UnsupportedCommand { command: 23 }))
     }
 
-    async fn extension(&mut self, _extension: Extension) -> Result<(), Box<dyn std::error::Error>> {
+    async fn extension(
+        &mut self,
+        _extension: Extension,
+    ) -> Result<Option<Extension>, Box<dyn std::error::Error>> {
         Err(Box::new(ProtoError::UnsupportedCommand { command: 27 }))
     }
 
@@ -169,7 +172,12 @@ pub trait Session: 'static + Sync + Send + Sized {
             Request::AddSmartcardKeyConstrained(key) => {
                 self.add_smartcard_key_constrained(key).await?
             }
-            Request::Extension(extension) => self.extension(extension).await?,
+            Request::Extension(extension) => {
+                return match self.extension(extension).await? {
+                    Some(response) => Ok(Response::ExtensionResponse(response)),
+                    None => Ok(Response::Success),
+                }
+            }
         }
         Ok(Response::Success)
     }
