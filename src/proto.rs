@@ -8,5 +8,3 @@ pub use self::error::*;
 pub use self::message::*;
 pub use self::privatekey::*;
 pub use self::signature::*;
-
-pub type MpInt = Vec<u8>;
