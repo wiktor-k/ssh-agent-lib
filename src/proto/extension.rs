@@ -16,7 +16,7 @@ pub trait MessageExtension: 'static + Encode + Decode {
     ///
     /// Extension names should be suffixed by the implementation domain
     /// as per [RFC4251 § 4.2](https://www.rfc-editor.org/rfc/rfc4251.html#section-4.2),
-    fn extension_name() -> &'static str;
+    const NAME: &'static str;
 }
 
 /// SSH agent protocol *key constraint* extension
@@ -27,7 +27,7 @@ pub trait KeyConstraintExtension: 'static + Encode + Decode {
     ///
     /// Extension names should be suffixed by the implementation domain
     /// as per [RFC4251 § 4.2](https://www.rfc-editor.org/rfc/rfc4251.html#section-4.2),
-    fn extension_name() -> &'static str;
+    const NAME: &'static str;
 }
 
 /// `query` message extension.
@@ -63,9 +63,7 @@ impl Decode for QueryResponse {
 }
 
 impl MessageExtension for QueryResponse {
-    fn extension_name() -> &'static str {
-        "query"
-    }
+    const NAME: &'static str = "query";
 }
 
 /// `session-bind@openssh.com` message extension.
@@ -132,9 +130,7 @@ impl Encode for SessionBind {
 }
 
 impl MessageExtension for SessionBind {
-    fn extension_name() -> &'static str {
-        "session-bind@openssh.com"
-    }
+    const NAME: &'static str = "session-bind@openssh.com";
 }
 
 /// `restrict-destination-v00@openssh.com` key constraint extension.
@@ -181,9 +177,7 @@ impl Encode for RestrictDestination {
 }
 
 impl KeyConstraintExtension for RestrictDestination {
-    fn extension_name() -> &'static str {
-        "restrict-destination-v00@openssh.com"
-    }
+    const NAME: &'static str = "restrict-destination-v00@openssh.com";
 }
 
 /// Tuple containing username and hostname with keys.
