@@ -7,7 +7,10 @@ use ssh_key::{
     certificate::Certificate, private::KeypairData, public::KeyData, Algorithm, Error, Signature,
 };
 
-use super::{extension::MessageExtension, PrivateKeyData, ProtoError};
+use super::{
+    extension::{KeyConstraintExtension, MessageExtension},
+    PrivateKeyData, ProtoError,
+};
 
 type Result<T> = core::result::Result<T, ProtoError>;
 
@@ -527,9 +530,9 @@ pub struct Extension {
 }
 
 impl Extension {
-    /// Create a new Extension object from a
+    /// Create a new message extension object from a
     /// structure implementing [`crate::proto::extension::MessageExtension`]
-    pub fn new<T>(extension: T) -> Result<Self>
+    pub fn new_message<T>(extension: T) -> Result<Self>
     where
         T: MessageExtension,
     {
@@ -541,17 +544,16 @@ impl Extension {
         })
     }
 
-    /// Create a new Extension object from with
-    /// an extension name, and a data structure
-    /// implementing [`ssh_encoding::Encode`]
-    pub fn new_from_data<T>(name: String, data: T) -> Result<Self>
+    /// Create a new key constraint extension object from a
+    /// structure implementing [`crate::proto::extension::KeyConstraintExtension`]
+    pub fn new_key_constraint<T>(extension: T) -> Result<Self>
     where
-        T: Encode,
+        T: KeyConstraintExtension,
     {
         let mut buffer: Vec<u8> = vec![];
-        data.encode(&mut buffer)?;
+        extension.encode(&mut buffer)?;
         Ok(Self {
-            name,
+            name: T::extension_name().into(),
             details: Unparsed(buffer),
         })
     }
