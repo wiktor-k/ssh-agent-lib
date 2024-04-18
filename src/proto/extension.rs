@@ -11,7 +11,7 @@ const RESERVED_FIELD: &str = "";
 /// SSH agent protocol *message* extension
 ///
 /// Described in [draft-miller-ssh-agent-14 § 3.8](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.8)
-pub trait MessageExtension: 'static + Encode + Decode {
+pub trait MessageExtension: 'static {
     /// Extension name, indicating the type of the message (as a UTF-8 string).
     ///
     /// Extension names should be suffixed by the implementation domain
@@ -22,7 +22,7 @@ pub trait MessageExtension: 'static + Encode + Decode {
 /// SSH agent protocol *key constraint* extension
 ///
 /// Described in [draft-miller-ssh-agent-14 § 3.2.7.3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2.7.3)
-pub trait KeyConstraintExtension: 'static + Encode + Decode {
+pub trait KeyConstraintExtension: 'static {
     /// Extension name, indicating the type of the key constraint (as a UTF-8 string).
     ///
     /// Extension names should be suffixed by the implementation domain

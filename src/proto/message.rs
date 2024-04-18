@@ -531,10 +531,36 @@ pub struct Extension {
 
 impl Extension {
     /// Create a new message extension object from a
-    /// structure implementing [`crate::proto::extension::MessageExtension`]
+    /// for a structure implementing [`ssh_encoding::Encode`]
     pub fn new_message<T>(extension: T) -> Result<Self>
     where
-        T: MessageExtension,
+        T: MessageExtension + Encode,
+    {
+        let mut buffer: Vec<u8> = vec![];
+        extension.encode(&mut buffer)?;
+        Ok(Self {
+            name: T::NAME.into(),
+            details: Unparsed(buffer),
+        })
+    }
+
+    /// Create a new message extension object from a
+    /// for a structure implementing [`Into<Vec<u8>>`]
+    pub fn new_message_raw<T>(extension: T) -> Result<Self>
+    where
+        T: MessageExtension + Into<Vec<u8>>,
+    {
+        Ok(Self {
+            name: T::NAME.into(),
+            details: Unparsed(extension.into()),
+        })
+    }
+
+    /// Create a new key constraint extension object from a
+    /// for a structure implementing [`ssh_encoding::Encode`]
+    pub fn new_key_constraint<T>(extension: T) -> Result<Self>
+    where
+        T: KeyConstraintExtension + Encode,
     {
         let mut buffer: Vec<u8> = vec![];
         extension.encode(&mut buffer)?;
@@ -545,16 +571,14 @@ impl Extension {
     }
 
     /// Create a new key constraint extension object from a
-    /// structure implementing [`crate::proto::extension::KeyConstraintExtension`]
-    pub fn new_key_constraint<T>(extension: T) -> Result<Self>
+    /// for a structure implementing [`Into<Vec<u8>>`]
+    pub fn new_key_constraint_raw<T>(extension: T) -> Result<Self>
     where
-        T: KeyConstraintExtension,
+        T: KeyConstraintExtension + Into<Vec<u8>>,
     {
-        let mut buffer: Vec<u8> = vec![];
-        extension.encode(&mut buffer)?;
         Ok(Self {
             name: T::NAME.into(),
-            details: Unparsed(buffer),
+            details: Unparsed(extension.into()),
         })
     }
 }
