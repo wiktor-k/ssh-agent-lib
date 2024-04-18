@@ -415,7 +415,7 @@ pub struct Extension {
 impl Extension {
     pub fn new_message<T>(extension: T) -> Result<Self>
     where
-        T: MessageExtension,
+        T: MessageExtension + Encode,
     {
         let mut buffer: Vec<u8> = vec![];
         extension.encode(&mut buffer)?;
@@ -425,15 +425,35 @@ impl Extension {
         })
     }
 
+    pub fn new_message_raw<T>(extension: T) -> Result<Self>
+    where
+        T: MessageExtension + Into<Vec<u8>>,
+    {
+        Ok(Self {
+            name: T::NAME.into(),
+            details: Unparsed(extension.into()),
+        })
+    }
+
     pub fn new_key_constraint<T>(extension: T) -> Result<Self>
     where
-        T: KeyConstraintExtension,
+        T: KeyConstraintExtension + Encode,
     {
         let mut buffer: Vec<u8> = vec![];
         extension.encode(&mut buffer)?;
         Ok(Self {
             name: T::NAME.into(),
             details: Unparsed(buffer),
+        })
+    }
+
+    pub fn new_key_constraint_raw<T>(extension: T) -> Result<Self>
+    where
+        T: KeyConstraintExtension + Into<Vec<u8>>,
+    {
+        Ok(Self {
+            name: T::NAME.into(),
+            details: Unparsed(extension.into()),
         })
     }
 }
