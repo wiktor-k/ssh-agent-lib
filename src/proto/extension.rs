@@ -79,14 +79,14 @@ impl Decode for RestrictDestination {
 impl Encode for RestrictDestination {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
         self.constraints.iter().try_fold(0, |acc, e| {
-            let constraint_len = e.encoded_len()?;
+            let constraint_len = e.encoded_len_prefixed()?;
             usize::checked_add(acc, constraint_len).ok_or(EncodingError::Length)
         })
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
         for constraint in &self.constraints {
-            constraint.encode(writer)?;
+            constraint.encode_prefixed(writer)?;
         }
         Ok(())
     }
