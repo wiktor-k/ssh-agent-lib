@@ -438,7 +438,7 @@ impl Encode for Extension {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Unparsed(Vec<u8>);
+pub struct Unparsed(pub Vec<u8>);
 
 impl Unparsed {
     pub fn parse<T>(&mut self) -> std::result::Result<T, <T as Decode>::Error>
