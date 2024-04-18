@@ -8,27 +8,46 @@ use super::ProtoError;
 // Reserved fields are marked with an empty string
 const RESERVED_FIELD: &str = "";
 
-/// `session-bind@openssh.com` message extension.
-/// `query` message extension
+/// SSH agent protocol *message* extension
 ///
-/// An optional extension request "query" is
-/// defined to allow a client to query which, if any,
-/// extensions are supported by an agent.
+/// Described in [draft-miller-ssh-agent-14 § 3.8](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.8)
+pub trait MessageExtension: 'static + Encode + Decode {
+    /// Extension name, indicating the type of the message (as a UTF-8 string).
+    ///
+    /// Extension names should be suffixed by the implementation domain
+    /// as per [RFC4251 § 4.2](https://www.rfc-editor.org/rfc/rfc4251.html#section-4.2),
+    fn extension_name() -> &'static str;
+}
+
+/// SSH agent protocol *key constraint* extension
 ///
-/// Spec:
-/// <https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#name-query-extension>
-#[derive(Debug, Clone)]
+/// Described in [draft-miller-ssh-agent-14 § 3.2.7.3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2.7.3)
+pub trait KeyConstraintExtension: 'static + Encode + Decode {
+    /// Extension name, indicating the type of the key constraint (as a UTF-8 string).
+    ///
+    /// Extension names should be suffixed by the implementation domain
+    /// as per [RFC4251 § 4.2](https://www.rfc-editor.org/rfc/rfc4251.html#section-4.2),
+    fn extension_name() -> &'static str;
+}
+
+/// `query` message extension.
+///
+/// An optional extension request "query" is defined to allow a
+/// client to query which, if any, extensions are supported by an agent.
+///
+/// Described in [draft-miller-ssh-agent-14 § 3.8.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.8.1)
+#[derive(Debug, Clone, PartialEq)]
 pub struct QueryResponse {
     /// List of supported message extension names
     pub extensions: Vec<String>,
 }
 
 impl Encode for QueryResponse {
-    fn encoded_len(&self) -> Result<usize, ssh_encoding::Error> {
+    fn encoded_len(&self) -> Result<usize, EncodingError> {
         self.extensions.encoded_len()
     }
 
-    fn encode(&self, writer: &mut impl ssh_encoding::Writer) -> Result<(), ssh_encoding::Error> {
+    fn encode(&self, writer: &mut impl Writer) -> Result<(), EncodingError> {
         self.extensions.encode(writer)
     }
 }
@@ -43,6 +62,12 @@ impl Decode for QueryResponse {
     }
 }
 
+impl MessageExtension for QueryResponse {
+    fn extension_name() -> &'static str {
+        "query"
+    }
+}
+
 /// `session-bind@openssh.com` message extension.
 ///
 /// This message extension allows an SSH client to bind an
@@ -51,7 +76,7 @@ impl Decode for QueryResponse {
 /// *Note*: This is an OpenSSH-specific extension to the agent protocol.
 ///
 /// Described in [OpenSSH PROTOCOL.agent § 1](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L6)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SessionBind {
     /// Server host public key.
     pub host_key: KeyData,
@@ -106,6 +131,12 @@ impl Encode for SessionBind {
     }
 }
 
+impl MessageExtension for SessionBind {
+    fn extension_name() -> &'static str {
+        "session-bind@openssh.com"
+    }
+}
+
 /// `restrict-destination-v00@openssh.com` key constraint extension.
 ///
 /// The key constraint extension supports destination- and forwarding path-
@@ -115,7 +146,7 @@ impl Encode for SessionBind {
 /// *Note*: This is an OpenSSH-specific extension to the agent protocol.
 ///
 /// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RestrictDestination {
     /// Set of constraints for the destination.
     pub constraints: Vec<DestinationConstraint>,
@@ -149,8 +180,18 @@ impl Encode for RestrictDestination {
     }
 }
 
+impl KeyConstraintExtension for RestrictDestination {
+    fn extension_name() -> &'static str {
+        "restrict-destination-v00@openssh.com"
+    }
+}
+
 /// Tuple containing username and hostname with keys.
-#[derive(Debug, Clone)]
+///
+/// *Note*: This is an OpenSSH-specific extension to the agent protocol.
+///
+/// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
+#[derive(Debug, Clone, PartialEq)]
 pub struct HostTuple {
     /// Username part of the tuple.
     pub username: String,
@@ -216,7 +257,7 @@ impl Encode for HostTuple {
 /// *Note*: This is an OpenSSH-specific extension to the agent protocol.
 ///
 /// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DestinationConstraint {
     /// Constraint's `from` endpoint.
     pub from: HostTuple,
@@ -264,7 +305,7 @@ impl Encode for DestinationConstraint {
 /// *Note*: This is an OpenSSH-specific extension to the agent protocol.
 ///
 /// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct KeySpec {
     /// The public parts of the key.
     pub keyblob: KeyData,
@@ -309,6 +350,20 @@ mod tests {
 
     use super::*;
 
+    fn round_trip<T>(msg: T) -> TestResult
+    where
+        T: Encode + Decode<Error = ProtoError> + std::fmt::Debug + std::cmp::PartialEq,
+    {
+        let mut buf: Vec<u8> = vec![];
+        msg.encode(&mut buf)?;
+        let mut re_encoded = &buf[..];
+
+        let msg2 = T::decode(&mut re_encoded)?;
+        assert_eq!(msg, msg2);
+
+        Ok(())
+    }
+
     #[test]
     fn parse_bind() -> TestResult {
         let mut buffer: &[u8] = &[
@@ -324,6 +379,9 @@ mod tests {
         ];
         let bind = SessionBind::decode(&mut buffer)?;
         eprintln!("Bind: {bind:#?}");
+
+        round_trip(bind)?;
+
         Ok(())
     }
 
@@ -372,7 +430,11 @@ mod tests {
             4db0 d166 7660 1ffe f93a 6872 4800 0000
             0000"
         )[..];
-        let _destination_constraint = RestrictDestination::decode(&mut msg)?;
+
+        let destination_constraint = RestrictDestination::decode(&mut msg)?;
+        eprintln!("Destination constraint: {destination_constraint:?}");
+
+        round_trip(destination_constraint)?;
 
         #[rustfmt::skip]
         let mut buffer: &[u8] = const_str::concat_bytes!(
@@ -399,6 +461,8 @@ mod tests {
         let destination_constraint = RestrictDestination::decode(&mut buffer)?;
         eprintln!("Destination constraint: {destination_constraint:?}");
 
+        round_trip(destination_constraint)?;
+
         let mut buffer: &[u8] = &[
             0, 0, 0, 102, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0,
             0, 0, 0, 10, 103, 105, 116, 104, 117, 98, 46, 99, 111, 109, 0, 0, 0, 0, 0, 0, 0, 51, 0,
@@ -408,6 +472,9 @@ mod tests {
         ];
         let destination_constraint = RestrictDestination::decode(&mut buffer)?;
         eprintln!("Destination constraint: {destination_constraint:?}");
+
+        round_trip(destination_constraint)?;
+
         Ok(())
     }
 }

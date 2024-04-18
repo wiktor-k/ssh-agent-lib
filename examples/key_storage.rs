@@ -207,12 +207,12 @@ impl Session for KeyStorage {
 
         match extension.name.as_str() {
             "query" => {
-                let response = QueryResponse {
+                let response = Extension::new(QueryResponse {
                     extensions: vec!["query".into(), "session-bind@openssh.com".into()],
-                };
+                })?;
 
                 // Respond with an `SSH_AGENT_EXTENSION_RESPONSE`
-                Ok(Some(Extension::new("query".into(), response)?))
+                Ok(Some(response))
             }
             "session-bind@openssh.com" => {
                 let bind = extension.details.parse::<SessionBind>()?;
@@ -222,9 +222,6 @@ impl Session for KeyStorage {
                 Ok(None)
             }
 
-            // TODO: determine best way to return
-            // `SSH_AGENT_EXTENSION_FAILURE` or `SSH_AGENT_FAILURE`
-            // here
             _ => Err(AgentError::Proto(ProtoError::UnsupportedCommand {
                 command: 27,
             })),
