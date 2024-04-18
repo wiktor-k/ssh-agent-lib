@@ -5,7 +5,7 @@ use ssh_key::{
     certificate::Certificate, private::KeypairData, public::KeyData, Algorithm, Error, Signature,
 };
 
-use super::{PrivateKeyData, ProtoError};
+use super::{extension::MessageExtension, PrivateKeyData, ProtoError};
 
 type Result<T> = core::result::Result<T, ProtoError>;
 
@@ -410,7 +410,19 @@ pub struct Extension {
 }
 
 impl Extension {
-    pub fn new<T>(name: String, data: T) -> Result<Self>
+    pub fn new<T>(extension: T) -> Result<Self>
+    where
+        T: MessageExtension,
+    {
+        let mut buffer: Vec<u8> = vec![];
+        extension.encode(&mut buffer)?;
+        Ok(Self {
+            name: T::extension_name().into(),
+            details: Unparsed(buffer),
+        })
+    }
+
+    pub fn new_from_data<T>(name: String, data: T) -> Result<Self>
     where
         T: Encode,
     {

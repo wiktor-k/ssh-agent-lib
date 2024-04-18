@@ -219,12 +219,12 @@ impl Session for KeyStorage {
 
         match extension.name.as_str() {
             "query" => {
-                let response = QueryResponse {
+                let response = Extension::new(QueryResponse {
                     extensions: vec!["query".into(), "session-bind@openssh.com".into()],
-                };
+                })?;
 
                 // Respond with an `SSH_AGENT_EXTENSION_RESPONSE`
-                Ok(Some(Extension::new("query".into(), response)?))
+                Ok(Some(response))
             }
             "session-bind@openssh.com" => {
                 let bind = extension.details.parse::<SessionBind>()?;
