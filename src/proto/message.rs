@@ -420,7 +420,7 @@ impl Extension {
         let mut buffer: Vec<u8> = vec![];
         extension.encode(&mut buffer)?;
         Ok(Self {
-            name: T::extension_name().into(),
+            name: T::NAME.into(),
             details: Unparsed(buffer),
         })
     }
@@ -432,7 +432,7 @@ impl Extension {
         let mut buffer: Vec<u8> = vec![];
         extension.encode(&mut buffer)?;
         Ok(Self {
-            name: T::extension_name().into(),
+            name: T::NAME.into(),
             details: Unparsed(buffer),
         })
     }
