@@ -18,10 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo install --locked just
-      - run: sudo apt-get install -y codespell
       - name: Check spelling
-        run: just spelling
+        uses: codespell-project/actions-codespell@v2
 
   formatting:
     name: Check formatting
