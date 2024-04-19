@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
@@ -11,6 +10,7 @@ use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::Session;
+use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::SessionBind;
 use ssh_agent_lib::proto::{
     message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
@@ -60,24 +60,21 @@ impl KeyStorage {
         }
     }
 
-    fn identity_remove(&self, pubkey: &PublicKey) -> Result<(), Box<dyn Error>> {
+    fn identity_remove(&self, pubkey: &PublicKey) -> Result<(), AgentError> {
         let mut identities = self.identities.lock().unwrap();
 
         if let Some(index) = Self::identity_index_from_pubkey(&identities, pubkey) {
             identities.remove(index);
             Ok(())
         } else {
-            Err(From::from("Failed to remove identity: identity not found"))
+            Err(std::io::Error::other("Failed to remove identity: identity not found").into())
         }
     }
 }
 
 #[crate::async_trait]
 impl Session for KeyStorage {
-    async fn sign(
-        &mut self,
-        sign_request: SignRequest,
-    ) -> Result<Signature, Box<dyn std::error::Error>> {
+    async fn sign(&mut self, sign_request: SignRequest) -> Result<Signature, AgentError> {
         let pubkey: PublicKey = sign_request.pubkey.clone().into();
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
@@ -90,7 +87,8 @@ impl Session for KeyStorage {
                         BigUint::from_bytes_be(key.public.e.as_bytes()),
                         BigUint::from_bytes_be(key.private.d.as_bytes()),
                         vec![],
-                    )?;
+                    )
+                    .map_err(AgentError::other)?;
                     let mut rng = rand::thread_rng();
                     let data = &sign_request.data;
 
@@ -105,20 +103,19 @@ impl Session for KeyStorage {
                         SigningKey::<Sha1>::new(private_key).sign_with_rng(&mut rng, data)
                     };
                     Ok(Signature::new(
-                        Algorithm::new(algorithm)?,
+                        Algorithm::new(algorithm).map_err(AgentError::other)?,
                         signature.to_bytes().to_vec(),
-                    )?)
+                    )
+                    .map_err(AgentError::other)?)
                 }
-                _ => Err(From::from("Signature for key type not implemented")),
+                _ => Err(std::io::Error::other("Signature for key type not implemented").into()),
             }
         } else {
-            Err(From::from("Failed to create signature: identity not found"))
+            Err(std::io::Error::other("Failed to create signature: identity not found").into())
         }
     }
 
-    async fn request_identities(
-        &mut self,
-    ) -> Result<Vec<message::Identity>, Box<dyn std::error::Error>> {
+    async fn request_identities(&mut self) -> Result<Vec<message::Identity>, AgentError> {
         let mut identities = vec![];
         for identity in self.identities.lock().unwrap().iter() {
             identities.push(message::Identity {
@@ -129,12 +126,9 @@ impl Session for KeyStorage {
         Ok(identities)
     }
 
-    async fn add_identity(
-        &mut self,
-        identity: AddIdentity,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn add_identity(&mut self, identity: AddIdentity) -> Result<(), AgentError> {
         if let Credential::Key { privkey, comment } = identity.credential {
-            let privkey = PrivateKey::try_from(privkey)?;
+            let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
             self.identity_add(Identity {
                 pubkey: PublicKey::from(&privkey),
                 privkey,
@@ -150,7 +144,7 @@ impl Session for KeyStorage {
     async fn add_identity_constrained(
         &mut self,
         identity: AddIdentityConstrained,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AgentError> {
         let AddIdentityConstrained {
             identity,
             constraints,
@@ -164,7 +158,7 @@ impl Session for KeyStorage {
                     }
                 }
                 if let Credential::Key { privkey, comment } = identity.credential.clone() {
-                    let privkey = PrivateKey::try_from(privkey)?;
+                    let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
                     self.identity_add(Identity {
                         pubkey: PublicKey::from(&privkey),
                         privkey,
@@ -176,19 +170,13 @@ impl Session for KeyStorage {
         self.add_identity(identity).await
     }
 
-    async fn remove_identity(
-        &mut self,
-        identity: RemoveIdentity,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn remove_identity(&mut self, identity: RemoveIdentity) -> Result<(), AgentError> {
         let pubkey: PublicKey = identity.pubkey.into();
         self.identity_remove(&pubkey)?;
         Ok(())
     }
 
-    async fn add_smartcard_key(
-        &mut self,
-        key: SmartcardKey,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn add_smartcard_key(&mut self, key: SmartcardKey) -> Result<(), AgentError> {
         info!("Adding smartcard key: {key:?}");
 
         Ok(())
@@ -197,24 +185,21 @@ impl Session for KeyStorage {
     async fn add_smartcard_key_constrained(
         &mut self,
         key: AddSmartcardKeyConstrained,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AgentError> {
         info!("Adding smartcard key with constraints: {key:?}");
         Ok(())
     }
-    async fn lock(&mut self, pwd: String) -> Result<(), Box<dyn std::error::Error>> {
+    async fn lock(&mut self, pwd: String) -> Result<(), AgentError> {
         info!("Locked with password: {pwd:?}");
         Ok(())
     }
 
-    async fn unlock(&mut self, pwd: String) -> Result<(), Box<dyn std::error::Error>> {
+    async fn unlock(&mut self, pwd: String) -> Result<(), AgentError> {
         info!("Unlocked with password: {pwd:?}");
         Ok(())
     }
 
-    async fn extension(
-        &mut self,
-        mut extension: Extension,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn extension(&mut self, mut extension: Extension) -> Result<(), AgentError> {
         info!("Extension: {extension:?}");
         if extension.name == "session-bind@openssh.com" {
             let bind = extension.details.parse::<SessionBind>()?;
@@ -245,7 +230,7 @@ impl Agent for KeyStorageAgent {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), AgentError> {
     env_logger::init();
 
     #[cfg(not(windows))]

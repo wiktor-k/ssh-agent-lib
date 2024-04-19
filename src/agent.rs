@@ -81,76 +81,85 @@ impl ListeningSocket for NamedPipeListener {
 
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
-    async fn request_identities(&mut self) -> Result<Vec<Identity>, Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 11 }))
+    async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 11,
+        }))
     }
 
-    async fn sign(
-        &mut self,
-        _request: SignRequest,
-    ) -> Result<Signature, Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 13 }))
+    async fn sign(&mut self, _request: SignRequest) -> Result<Signature, AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 13,
+        }))
     }
 
-    async fn add_identity(
-        &mut self,
-        _identity: AddIdentity,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 17 }))
+    async fn add_identity(&mut self, _identity: AddIdentity) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 17,
+        }))
     }
 
     async fn add_identity_constrained(
         &mut self,
         _identity: AddIdentityConstrained,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 25 }))
+    ) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 25,
+        }))
     }
 
-    async fn remove_identity(
-        &mut self,
-        _identity: RemoveIdentity,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 18 }))
+    async fn remove_identity(&mut self, _identity: RemoveIdentity) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 18,
+        }))
     }
 
-    async fn remove_all_identities(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 19 }))
+    async fn remove_all_identities(&mut self) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 19,
+        }))
     }
 
-    async fn add_smartcard_key(
-        &mut self,
-        _key: SmartcardKey,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 20 }))
+    async fn add_smartcard_key(&mut self, _key: SmartcardKey) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 20,
+        }))
     }
 
     async fn add_smartcard_key_constrained(
         &mut self,
         _key: AddSmartcardKeyConstrained,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 26 }))
+    ) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 26,
+        }))
     }
 
-    async fn remove_smartcard_key(
-        &mut self,
-        _key: SmartcardKey,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 21 }))
+    async fn remove_smartcard_key(&mut self, _key: SmartcardKey) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 21,
+        }))
     }
 
-    async fn lock(&mut self, _key: String) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 22 }))
+    async fn lock(&mut self, _key: String) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 22,
+        }))
     }
 
-    async fn unlock(&mut self, _key: String) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 23 }))
+    async fn unlock(&mut self, _key: String) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 23,
+        }))
     }
 
-    async fn extension(&mut self, _extension: Extension) -> Result<(), Box<dyn std::error::Error>> {
-        Err(Box::new(ProtoError::UnsupportedCommand { command: 27 }))
+    async fn extension(&mut self, _extension: Extension) -> Result<(), AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: 27,
+        }))
     }
 
-    async fn handle(&mut self, message: Request) -> Result<Response, Box<dyn std::error::Error>> {
+    async fn handle(&mut self, message: Request) -> Result<Response, AgentError> {
         match message {
             Request::RequestIdentities => {
                 return Ok(Response::IdentitiesAnswer(self.request_identities().await?))

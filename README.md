@@ -17,7 +17,7 @@ On Unix it uses `ssh-agent.sock` Unix domain socket while on Windows it uses a n
 use tokio::net::UnixListener as Listener;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
-
+use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::agent::{Session, Agent};
 use ssh_agent_lib::proto::{Identity, SignRequest};
 use ssh_key::{Algorithm, Signature};
@@ -27,17 +27,17 @@ struct MyAgent;
 
 #[ssh_agent_lib::async_trait]
 impl Session for MyAgent {
-    async fn request_identities(&mut self) -> Result<Vec<Identity>, Box<dyn std::error::Error>> {
+    async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         Ok(vec![ /* public keys that this agent knows of */ ])
     }
 
-    async fn sign(&mut self, request: SignRequest) -> Result<Signature, Box<dyn std::error::Error>> {
+    async fn sign(&mut self, request: SignRequest) -> Result<Signature, AgentError> {
         // get the signature by signing `request.data`
         let signature = vec![];
         Ok(Signature::new(
-             Algorithm::new("algorithm")?,
+             Algorithm::new("algorithm").map_err(AgentError::other)?,
              signature,
-        )?)
+        ).map_err(AgentError::other)?)
     }
 }
 
