@@ -1,3 +1,5 @@
+//! SSH agent errors
+
 use std::io;
 
 use thiserror::Error;

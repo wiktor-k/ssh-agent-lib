@@ -4,13 +4,14 @@ use ssh_key::{public::KeyData, Signature};
 // Reserved fields are marked with an empty string
 const RESERVED_FIELD: &str = "";
 
-/// session-bind@openssh.com extension
+/// `session-bind@openssh.com` message extension.
 ///
-/// This extension allows a ssh client to bind an agent connection to a
-/// particular SSH session.
+/// This message extension allows an SSH client to bind an
+/// agent connection to a particular SSH session.
 ///
-/// Spec:
-/// <https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L6>
+/// *Note*: This is an OpenSSH-specific extension to the agent protocol.
+///
+/// Described in [OpenSSH PROTOCOL.agent § 1](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L6)
 #[derive(Debug, Clone)]
 pub struct SessionBind {
     pub host_key: KeyData,
@@ -59,6 +60,15 @@ impl Encode for SessionBind {
     }
 }
 
+/// `restrict-destination-v00@openssh.com` key constraint extension.
+///
+/// The key constraint extension supports destination- and forwarding path-
+/// restricted keys. It may be attached as a constraint when keys or
+/// smartcard keys are added to an agent.
+///
+/// *Note*: This is an OpenSSH-specific extension to the agent protocol.
+///
+/// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
 #[derive(Debug, Clone)]
 pub struct RestrictDestination {
     pub constraints: Vec<DestinationConstraint>,
@@ -145,6 +155,14 @@ impl Encode for HostTuple {
     }
 }
 
+/// Key destination constraint.
+///
+/// One or more [`DestinationConstraint`]s are included in
+/// the [`RestrictDestination`] key constraint extension.
+///
+/// *Note*: This is an OpenSSH-specific extension to the agent protocol.
+///
+/// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
 #[derive(Debug, Clone)]
 pub struct DestinationConstraint {
     pub from: HostTuple,
@@ -181,6 +199,15 @@ impl Encode for DestinationConstraint {
     }
 }
 
+/// Public key specification.
+///
+/// This structure is included in [`DestinationConstraint`],
+/// which in turn is used in the [`RestrictDestination`] key
+/// constraint extension.
+///
+/// *Note*: This is an OpenSSH-specific extension to the agent protocol.
+///
+/// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
 #[derive(Debug, Clone)]
 pub struct KeySpec {
     pub keyblob: KeyData,
