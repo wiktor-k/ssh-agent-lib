@@ -1,3 +1,5 @@
+//! SSH agent extension structures
+
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
 use ssh_key::{public::KeyData, Signature};
 
@@ -14,9 +16,16 @@ const RESERVED_FIELD: &str = "";
 /// Described in [OpenSSH PROTOCOL.agent § 1](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L6)
 #[derive(Debug, Clone)]
 pub struct SessionBind {
+    /// Server host public key.
     pub host_key: KeyData,
+
+    /// Hash derived from the initial key exchange.
     pub session_id: Vec<u8>,
+
+    /// Server's signature of the session identifier using the private hostkey.
     pub signature: Signature,
+
+    /// Flag indicating whether this connection should be bound for user authentication or forwarding.
     pub is_forwarding: bool,
 }
 
@@ -71,6 +80,7 @@ impl Encode for SessionBind {
 /// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
 #[derive(Debug, Clone)]
 pub struct RestrictDestination {
+    /// Set of constraints for the destination.
     pub constraints: Vec<DestinationConstraint>,
 }
 
@@ -102,10 +112,16 @@ impl Encode for RestrictDestination {
     }
 }
 
+/// Tuple containing username and hostname with keys.
 #[derive(Debug, Clone)]
 pub struct HostTuple {
+    /// Username part of the tuple.
     pub username: String,
+
+    /// Hostname part of the tuple.
     pub hostname: String,
+
+    /// Set of keys for the tuple.
     pub keys: Vec<KeySpec>,
 }
 
@@ -165,7 +181,10 @@ impl Encode for HostTuple {
 /// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
 #[derive(Debug, Clone)]
 pub struct DestinationConstraint {
+    /// Constraint's `from` endpoint.
     pub from: HostTuple,
+
+    /// Constraint's `to` endpoint.
     pub to: HostTuple,
 }
 
@@ -210,7 +229,10 @@ impl Encode for DestinationConstraint {
 /// Described in [OpenSSH PROTOCOL.agent § 2](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L38)
 #[derive(Debug, Clone)]
 pub struct KeySpec {
+    /// The public parts of the key.
     pub keyblob: KeyData,
+
+    /// Flag indicating if this key is for a CA.
     pub is_ca: bool,
 }
 
