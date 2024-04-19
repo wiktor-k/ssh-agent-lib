@@ -131,15 +131,25 @@ impl Encode for SignRequest {
 pub enum Credential {
     /// A public/private key pair
     Key {
+        /// Public/private key pair data
         privkey: KeypairData,
+
+        /// Key comment, if any.
         comment: String,
     },
 
     /// An OpenSSH [certificate](https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.certkeys)
     Cert {
+        /// Certificate algorithm.
         algorithm: Algorithm,
+
+        /// Certificate data.
         certificate: Certificate,
+
+        /// Private key data.
         privkey: PrivateKeyData,
+
+        /// Comment, if any.
         comment: String,
     },
 }
@@ -550,6 +560,7 @@ impl Encode for Extension {
 pub struct Unparsed(pub Vec<u8>);
 
 impl Unparsed {
+    /// Decode unparsed bytes as SSH structures.
     pub fn parse<T>(&mut self) -> std::result::Result<T, <T as Decode>::Error>
     where
         T: Decode,

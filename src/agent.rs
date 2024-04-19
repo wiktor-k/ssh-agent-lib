@@ -27,10 +27,13 @@ use crate::proto::RemoveIdentity;
 use crate::proto::SignRequest;
 use crate::proto::SmartcardKey;
 
+/// Type representing a socket that asynchronously returns a list of streams.
 #[async_trait]
 pub trait ListeningSocket {
+    /// Stream type that represents an accepted socket.
     type Stream: fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static;
 
+    /// Waits until a client connects and returns connected stream.
     async fn accept(&mut self) -> io::Result<Self::Stream>;
 }
 
@@ -81,26 +84,34 @@ impl ListeningSocket for NamedPipeListener {
     }
 }
 
+/// Represents one active SSH connection.
+///
+/// This type is implemented by agents that want to handle incoming SSH agent
+/// connections.
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Sized {
+    /// Request a list of keys managed by this session.
     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 11,
         }))
     }
 
+    /// Perform a private key signature operation.
     async fn sign(&mut self, _request: SignRequest) -> Result<Signature, AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 13,
         }))
     }
 
+    /// Add a private key to the agent.
     async fn add_identity(&mut self, _identity: AddIdentity) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 17,
         }))
     }
 
+    /// Add a private key to the agent with a set of constraints.
     async fn add_identity_constrained(
         &mut self,
         _identity: AddIdentityConstrained,
@@ -110,24 +121,28 @@ pub trait Session: 'static + Sync + Send + Sized {
         }))
     }
 
+    /// Remove private key from an agent.
     async fn remove_identity(&mut self, _identity: RemoveIdentity) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 18,
         }))
     }
 
+    /// Remove all keys from an agent.
     async fn remove_all_identities(&mut self) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 19,
         }))
     }
 
+    /// Add a key stored on a smartcard.
     async fn add_smartcard_key(&mut self, _key: SmartcardKey) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 20,
         }))
     }
 
+    /// Add a key stored on a smartcard with a set of constraints.
     async fn add_smartcard_key_constrained(
         &mut self,
         _key: AddSmartcardKeyConstrained,
@@ -137,30 +152,39 @@ pub trait Session: 'static + Sync + Send + Sized {
         }))
     }
 
+    /// Remove a smartcard key from the agent.
     async fn remove_smartcard_key(&mut self, _key: SmartcardKey) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 21,
         }))
     }
 
+    /// Temporarily lock the agent with a password.
     async fn lock(&mut self, _key: String) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 22,
         }))
     }
 
+    /// Unlock the agent with a password.
     async fn unlock(&mut self, _key: String) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 23,
         }))
     }
 
+    /// Invoke a custom, vendor-specific extension on the agent.
     async fn extension(&mut self, _extension: Extension) -> Result<(), AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
             command: 27,
         }))
     }
 
+    /// Handle a raw SSH agent request and return agent response.
+    ///
+    /// Note that it is preferable to use high-level functions instead of
+    /// this function. This function should be overridden only for custom
+    /// messages, outside of the SSH agent protocol specification.
     async fn handle(&mut self, message: Request) -> Result<Response, AgentError> {
         match message {
             Request::RequestIdentities => {
@@ -185,6 +209,7 @@ pub trait Session: 'static + Sync + Send + Sized {
         Ok(Response::Success)
     }
 
+    #[doc(hidden)]
     async fn handle_socket<S>(
         &mut self,
         mut adapter: Framed<S::Stream, Codec<Request, Response>>,
@@ -214,9 +239,13 @@ pub trait Session: 'static + Sync + Send + Sized {
     }
 }
 
+/// Type representing an agent listening for incoming connections.
 #[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
+    /// Create new session object when a new socket is accepted.
     fn new_session(&mut self) -> impl Session;
+
+    /// Listen on a socket waiting for client connections.
     async fn listen<S>(mut self, mut socket: S) -> Result<(), AgentError>
     where
         S: ListeningSocket + fmt::Debug + Send,
@@ -240,6 +269,8 @@ pub trait Agent: 'static + Sync + Send + Sized {
             }
         }
     }
+
+    /// Bind to a service binding listener.
     async fn bind(mut self, listener: service_binding::Listener) -> Result<(), AgentError> {
         match listener {
             #[cfg(unix)]
