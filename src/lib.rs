@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_debug_implementations)]
 #![deny(unsafe_code)]
+#![deny(missing_docs)]
 
 pub mod proto;
 

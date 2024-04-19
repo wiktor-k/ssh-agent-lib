@@ -54,12 +54,14 @@ impl ListeningSocket for TcpListener {
     }
 }
 
+/// Listener for Windows Named Pipes.
 #[cfg(windows)]
 #[derive(Debug)]
 pub struct NamedPipeListener(NamedPipeServer, std::ffi::OsString);
 
 #[cfg(windows)]
 impl NamedPipeListener {
+    /// Bind to a pipe path.
     pub fn bind(pipe: impl Into<std::ffi::OsString>) -> std::io::Result<Self> {
         let pipe = pipe.into();
         Ok(NamedPipeListener(
