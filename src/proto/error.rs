@@ -29,13 +29,6 @@ pub enum ProtoError {
         /// Command code that was unsupported.
         command: u8,
     },
-
-    /// Mismatch when decoding `name` from an Extension
-    #[error("Mismatched extension name while decoding: {name}")]
-    MismatchedExtension {
-        /// The extension name received
-        name: String,
-    },
 }
 
 /// Protocol result.
