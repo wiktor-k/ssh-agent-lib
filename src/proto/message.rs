@@ -536,8 +536,8 @@ pub struct Extension {
 }
 
 impl Extension {
-    /// Create a new message extension object from a
-    /// for a structure implementing [`ssh_encoding::Encode`]
+    /// Create a new [`Extension`] from a [`MessageExtension`]
+    /// structure implementing [`ssh_encoding::Encode`]
     pub fn new_message<T>(extension: T) -> Result<Self>
     where
         T: MessageExtension + Encode,
@@ -550,8 +550,8 @@ impl Extension {
         })
     }
 
-    /// Attempt to parse a message extension object
-    /// from an extension object into a structure
+    /// Attempt to parse a an extension object into a
+    /// [`MessageExtension`] structure
     /// implementing [`ssh_encoding::Decode`].
     ///
     /// If there is a mismatch between the extension name
@@ -568,8 +568,8 @@ impl Extension {
         }
     }
 
-    /// Create a new key constraint extension object from a
-    /// for a structure implementing [`ssh_encoding::Encode`].
+    /// Create a new [`Extension`] from a [`KeyConstraintExtension`]
+    /// structure implementing [`ssh_encoding::Encode`]
     pub fn new_key_constraint<T>(extension: T) -> Result<Self>
     where
         T: KeyConstraintExtension + Encode,
@@ -582,8 +582,8 @@ impl Extension {
         })
     }
 
-    /// Attempt to parse a key constraint extension object
-    /// from an extension object into a structure
+    /// Attempt to parse a an extension object into a
+    /// [`KeyConstraintExtension`] structure
     /// implementing [`ssh_encoding::Decode`].
     ///
     /// If there is a mismatch between the extension name
