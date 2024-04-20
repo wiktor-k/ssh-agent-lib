@@ -14,7 +14,7 @@ use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::{QueryResponse, SessionBind};
 use ssh_agent_lib::proto::{
     message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
-    Credential, Extension, KeyConstraint, ProtoError, RemoveIdentity, SignRequest, SmartcardKey,
+    Credential, Extension, KeyConstraint, RemoveIdentity, SignRequest, SmartcardKey,
 };
 use ssh_agent_lib::Agent;
 use ssh_key::{
@@ -221,10 +221,7 @@ impl Session for KeyStorage {
                 // Respond with `SSH_AGENT_SUCCESS`
                 Ok(None)
             }
-
-            _ => Err(AgentError::Proto(ProtoError::UnsupportedCommand {
-                command: 27,
-            })),
+            _ => Err(AgentError::Failure),
         }
     }
 }

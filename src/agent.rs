@@ -229,6 +229,10 @@ pub trait Session: 'static + Sync + Send + Sized {
                 log::debug!("Request: {incoming_message:?}");
                 let response = match self.handle(incoming_message).await {
                     Ok(message) => message,
+                    Err(AgentError::ExtensionFailure) => {
+                        log::error!("Extension failure handling message");
+                        Response::ExtensionFailure
+                    }
                     Err(e) => {
                         log::error!("Error handling message: {:?}", e);
                         Response::Failure
