@@ -50,6 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: wiktor-k/setup-just@v1
+      - run: just install-packages
       - name: Run unit tests
         run: just tests
 
@@ -73,5 +74,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: wiktor-k/setup-just@v1
+      - run: just install-packages
       - name: Check for lints
         run: just lints

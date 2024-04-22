@@ -27,6 +27,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - run: cargo install --locked just
+      - run: just install-packages
       # If the example doesn't compile the integration test will
       # be stuck. Check for compilation issues earlier to abort the job
       - name: Check if the example compiles
