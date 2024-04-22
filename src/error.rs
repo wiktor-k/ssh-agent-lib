@@ -20,6 +20,14 @@ pub enum AgentError {
     /// Other unspecified error.
     #[error("Other error: {0:#}")]
     Other(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    /// Generic agent extension failure
+    #[error("Generic agent extension failure")]
+    ExtensionFailure,
+
+    /// Generic agent failure
+    #[error("Generic agent failure")]
+    Failure,
 }
 
 impl AgentError {

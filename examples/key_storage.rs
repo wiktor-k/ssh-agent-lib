@@ -11,7 +11,7 @@ use sha1::Sha1;
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::Session;
 use ssh_agent_lib::error::AgentError;
-use ssh_agent_lib::proto::extension::SessionBind;
+use ssh_agent_lib::proto::extension::{QueryResponse, RestrictDestination, SessionBind};
 use ssh_agent_lib::proto::{
     message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
     Credential, Extension, KeyConstraint, RemoveIdentity, SignRequest, SmartcardKey,
@@ -151,12 +151,13 @@ impl Session for KeyStorage {
         } = identity;
         info!("Would use these constraints: {constraints:#?}");
         for constraint in constraints {
-            if let KeyConstraint::Extension(name, mut details) = constraint {
-                if name == "restrict-destination-v00@openssh.com" {
-                    if let Ok(destination_constraint) = details.parse::<SessionBind>() {
-                        info!("Destination constraint: {destination_constraint:?}");
-                    }
+            if let KeyConstraint::Extension(mut extension) = constraint {
+                if let Some(destination) =
+                    extension.parse_key_constraint::<RestrictDestination>()?
+                {
+                    info!("Destination constraint: {destination:?}");
                 }
+
                 if let Credential::Key { privkey, comment } = identity.credential.clone() {
                     let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
                     self.identity_add(Identity {
@@ -199,13 +200,28 @@ impl Session for KeyStorage {
         Ok(())
     }
 
-    async fn extension(&mut self, mut extension: Extension) -> Result<(), AgentError> {
+    async fn extension(
+        &mut self,
+        mut extension: Extension,
+    ) -> Result<Option<Extension>, AgentError> {
         info!("Extension: {extension:?}");
-        if extension.name == "session-bind@openssh.com" {
-            let bind = extension.details.parse::<SessionBind>()?;
-            info!("Bind: {bind:?}");
+
+        match extension.name.as_str() {
+            "query" => {
+                let response = Extension::new_message(QueryResponse {
+                    extensions: vec!["query".into(), "session-bind@openssh.com".into()],
+                })?;
+                Ok(Some(response))
+            }
+            "session-bind@openssh.com" => match extension.parse_message::<SessionBind>()? {
+                Some(bind) => {
+                    info!("Bind: {bind:?}");
+                    Ok(None)
+                }
+                None => Err(AgentError::Failure),
+            },
+            _ => Err(AgentError::Failure),
         }
-        Ok(())
     }
 }
 
