@@ -29,6 +29,10 @@ pub enum ProtoError {
         /// Command code that was unsupported.
         command: u8,
     },
+
+    /// The client expected a different response.
+    #[error("Unexpected response received")]
+    UnexpectedResponse,
 }
 
 /// Protocol result.

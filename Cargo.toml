@@ -23,9 +23,9 @@ byteorder = "1.4.3"
 async-trait = { version = "0.1.77", optional = true }
 futures = { version = "0.3.30", optional = true }
 log = { version = "0.4.6", optional = true }
-tokio = { version = "1", optional = true, features = ["rt", "net"] }
+tokio = { version = "1", optional = true, features = ["rt", "net", "time"] }
 tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
-service-binding = { version = "^2" }
+service-binding = { version = "^2.1" }
 ssh-encoding = { version = "0.2.0" }
 ssh-key = { version = "0.6.6", features = ["rsa", "alloc"] }
 thiserror = "1.0.58"
