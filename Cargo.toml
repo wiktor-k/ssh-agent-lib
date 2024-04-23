@@ -57,3 +57,5 @@ rstest = "0.18.2"
 openpgp-card = "0.4.2"
 card-backend-pcsc = "0.5.0"
 clap = { version = "4.5.4", features = ["derive"] }
+secrecy = "0.8.0"
+retainer = "0.3.0"
