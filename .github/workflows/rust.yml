@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - run: cargo install --locked just
+      - uses: wiktor-k/setup-just@v1
       - run: rustup install nightly
       - run: rustup component add rustfmt --toolchain nightly
       - name: Check formatting
@@ -49,24 +49,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - run: cargo install --locked just
+      - uses: wiktor-k/setup-just@v1
       - name: Run unit tests
         run: just tests
 
   deps:
     name: Check dependencies
-    strategy:
-      matrix:
-        include:
-        - os: ubuntu-latest
-        - os: macos-latest
-        - os: windows-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo install --locked just cargo-deny
       - name: Run dependencies check
-        run: just dependencies
+        uses: EmbarkStudios/cargo-deny-action@v1
 
   lints:
     name: Clippy lints
@@ -79,6 +72,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - run: cargo install --locked just
+      - uses: wiktor-k/setup-just@v1
       - name: Check for lints
         run: just lints
