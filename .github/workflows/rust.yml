@@ -55,18 +55,11 @@ jobs:
 
   deps:
     name: Check dependencies
-    strategy:
-      matrix:
-        include:
-        - os: ubuntu-latest
-        - os: macos-latest
-        - os: windows-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo install --locked just cargo-deny
       - name: Run dependencies check
-        run: just dependencies
+        uses: EmbarkStudios/cargo-deny-action@v1
 
   lints:
     name: Clippy lints
