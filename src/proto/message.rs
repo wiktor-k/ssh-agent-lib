@@ -557,7 +557,7 @@ impl Extension {
     /// If there is a mismatch between the extension name
     /// and the [`MessageExtension::NAME`], this method
     /// will return [`None`]
-    pub fn parse_message<T>(&mut self) -> std::result::Result<Option<T>, <T as Decode>::Error>
+    pub fn parse_message<T>(&self) -> std::result::Result<Option<T>, <T as Decode>::Error>
     where
         T: MessageExtension + Decode,
     {
@@ -638,7 +638,7 @@ pub struct Unparsed(pub Vec<u8>);
 
 impl Unparsed {
     /// Decode unparsed bytes as SSH structures.
-    pub fn parse<T>(&mut self) -> std::result::Result<T, <T as Decode>::Error>
+    pub fn parse<T>(&self) -> std::result::Result<T, <T as Decode>::Error>
     where
         T: Decode,
     {
