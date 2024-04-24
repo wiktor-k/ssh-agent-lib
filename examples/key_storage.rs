@@ -200,10 +200,7 @@ impl Session for KeyStorage {
         Ok(())
     }
 
-    async fn extension(
-        &mut self,
-        mut extension: Extension,
-    ) -> Result<Option<Extension>, AgentError> {
+    async fn extension(&mut self, extension: Extension) -> Result<Option<Extension>, AgentError> {
         info!("Extension: {extension:?}");
 
         match extension.name.as_str() {
