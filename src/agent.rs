@@ -253,7 +253,9 @@ where
 #[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
     /// Create new session object when a new socket is accepted.
-    fn new_session(&mut self) -> impl Session;
+    fn new_session<S>(&mut self, socket: &S::Stream) -> impl Session
+    where
+        S: ListeningSocket + fmt::Debug + Send;
 
     /// Listen on a socket waiting for client connections.
     async fn listen<S>(mut self, mut socket: S) -> Result<(), AgentError>
@@ -264,7 +266,7 @@ pub trait Agent: 'static + Sync + Send + Sized {
         loop {
             match socket.accept().await {
                 Ok(socket) => {
-                    let session = self.new_session();
+                    let session = self.new_session::<S>(&socket);
                     tokio::spawn(async move {
                         let adapter = Framed::new(socket, Codec::<Request, Response>::default());
                         if let Err(e) = handle_socket::<S>(session, adapter).await {
@@ -306,7 +308,10 @@ impl<T> Agent for T
 where
     T: Default + Session,
 {
-    fn new_session(&mut self) -> impl Session {
+    fn new_session<S>(&mut self, _socket: &S::Stream) -> impl Session
+    where
+        S: ListeningSocket + fmt::Debug + Send,
+    {
         Self::default()
     }
 }
