@@ -9,7 +9,7 @@ use rsa::BigUint;
 use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
-use ssh_agent_lib::agent::Session;
+use ssh_agent_lib::agent::{ListeningSocket, Session};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::{QueryResponse, RestrictDestination, SessionBind};
 use ssh_agent_lib::proto::{
@@ -238,7 +238,10 @@ impl KeyStorageAgent {
 }
 
 impl Agent for KeyStorageAgent {
-    fn new_session(&mut self) -> impl Session {
+    fn new_session<S>(&mut self, _socket: &S::Stream) -> impl Session
+    where
+        S: ListeningSocket + std::fmt::Debug + Send,
+    {
         KeyStorage {
             identities: Arc::clone(&self.identities),
         }
