@@ -151,7 +151,7 @@ impl Session for KeyStorage {
         } = identity;
         info!("Would use these constraints: {constraints:#?}");
         for constraint in constraints {
-            if let KeyConstraint::Extension(mut extension) = constraint {
+            if let KeyConstraint::Extension(extension) = constraint {
                 if let Some(destination) =
                     extension.parse_key_constraint::<RestrictDestination>()?
                 {
