@@ -589,9 +589,7 @@ impl Extension {
     /// If there is a mismatch between the extension name
     /// and the [`KeyConstraintExtension::NAME`], this method
     /// will return [`None`]
-    pub fn parse_key_constraint<T>(
-        &mut self,
-    ) -> std::result::Result<Option<T>, <T as Decode>::Error>
+    pub fn parse_key_constraint<T>(&self) -> std::result::Result<Option<T>, <T as Decode>::Error>
     where
         T: KeyConstraintExtension + Decode,
     {
