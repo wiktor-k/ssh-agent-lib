@@ -235,10 +235,11 @@ impl KeyStorageAgent {
 }
 
 impl Agent for KeyStorageAgent {
-    fn new_session<S>(&mut self, _socket: &S::Stream) -> impl Session
+    fn new_session<S>(&mut self, _socket: &S::Stream, client_info: &S::ClientInfo) -> impl Session
     where
         S: ListeningSocket + std::fmt::Debug + Send,
     {
+        println!("New connection from client: {:?}", client_info);
         KeyStorage {
             identities: Arc::clone(&self.identities),
         }

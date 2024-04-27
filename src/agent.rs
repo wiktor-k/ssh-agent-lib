@@ -1,19 +1,18 @@
 //! Traits for implementing custom SSH agents
 
+pub mod listener;
+
 use std::fmt;
-use std::io;
 
 use async_trait::async_trait;
 use futures::{SinkExt, TryStreamExt};
 use ssh_key::Signature;
-use tokio::io::{AsyncRead, AsyncWrite};
-#[cfg(windows)]
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 #[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::UnixListener;
 use tokio_util::codec::Framed;
 
+pub use self::listener::*;
 use super::error::AgentError;
 use super::proto::message::{Request, Response};
 use crate::codec::Codec;
@@ -26,65 +25,6 @@ use crate::proto::ProtoError;
 use crate::proto::RemoveIdentity;
 use crate::proto::SignRequest;
 use crate::proto::SmartcardKey;
-
-/// Type representing a socket that asynchronously returns a list of streams.
-#[async_trait]
-pub trait ListeningSocket {
-    /// Stream type that represents an accepted socket.
-    type Stream: fmt::Debug + AsyncRead + AsyncWrite + Send + Unpin + 'static;
-
-    /// Waits until a client connects and returns connected stream.
-    async fn accept(&mut self) -> io::Result<Self::Stream>;
-}
-
-#[cfg(unix)]
-#[async_trait]
-impl ListeningSocket for UnixListener {
-    type Stream = UnixStream;
-    async fn accept(&mut self) -> io::Result<Self::Stream> {
-        UnixListener::accept(self).await.map(|(s, _addr)| s)
-    }
-}
-
-#[async_trait]
-impl ListeningSocket for TcpListener {
-    type Stream = TcpStream;
-    async fn accept(&mut self) -> io::Result<Self::Stream> {
-        TcpListener::accept(self).await.map(|(s, _addr)| s)
-    }
-}
-
-/// Listener for Windows Named Pipes.
-#[cfg(windows)]
-#[derive(Debug)]
-pub struct NamedPipeListener(NamedPipeServer, std::ffi::OsString);
-
-#[cfg(windows)]
-impl NamedPipeListener {
-    /// Bind to a pipe path.
-    pub fn bind(pipe: impl Into<std::ffi::OsString>) -> std::io::Result<Self> {
-        let pipe = pipe.into();
-        Ok(NamedPipeListener(
-            ServerOptions::new()
-                .first_pipe_instance(true)
-                .create(&pipe)?,
-            pipe,
-        ))
-    }
-}
-
-#[cfg(windows)]
-#[async_trait]
-impl ListeningSocket for NamedPipeListener {
-    type Stream = NamedPipeServer;
-    async fn accept(&mut self) -> io::Result<Self::Stream> {
-        self.0.connect().await?;
-        Ok(std::mem::replace(
-            &mut self.0,
-            ServerOptions::new().create(&self.1)?,
-        ))
-    }
-}
 
 /// Represents one active SSH connection.
 ///
@@ -253,7 +193,7 @@ where
 #[async_trait]
 pub trait Agent: 'static + Sync + Send + Sized {
     /// Create new session object when a new socket is accepted.
-    fn new_session<S>(&mut self, socket: &S::Stream) -> impl Session
+    fn new_session<S>(&mut self, socket: &S::Stream, client_info: &S::ClientInfo) -> impl Session
     where
         S: ListeningSocket + fmt::Debug + Send;
 
@@ -266,7 +206,8 @@ pub trait Agent: 'static + Sync + Send + Sized {
         loop {
             match socket.accept().await {
                 Ok(socket) => {
-                    let session = self.new_session::<S>(&socket);
+                    let client_info = S::client_info(&socket)?;
+                    let session = self.new_session::<S>(&socket, &client_info);
                     tokio::spawn(async move {
                         let adapter = Framed::new(socket, Codec::<Request, Response>::default());
                         if let Err(e) = handle_socket::<S>(session, adapter).await {
@@ -308,7 +249,7 @@ impl<T> Agent for T
 where
     T: Default + Session,
 {
-    fn new_session<S>(&mut self, _socket: &S::Stream) -> impl Session
+    fn new_session<S>(&mut self, _socket: &S::Stream, _client_info: &S::ClientInfo) -> impl Session
     where
         S: ListeningSocket + fmt::Debug + Send,
     {

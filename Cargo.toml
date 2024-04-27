@@ -32,6 +32,13 @@ thiserror = "1.0.58"
 #uuid = { version = "1.8.0", features = ["v4"] }
 subtle = { version = "2", default-features = false }
 
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.54"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Pipes",
+]
+
 [features]
 default = ["agent"]
 codec = ["tokio-util"]
