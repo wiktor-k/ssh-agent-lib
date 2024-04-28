@@ -4,6 +4,7 @@
 //! - [draft-miller-ssh-agent-14](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html)
 //! - [OpenSSH `PROTOCOL.agent`](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent)
 
+use signature::Verifier;
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
 use ssh_key::{public::KeyData, Signature};
 
@@ -109,6 +110,21 @@ impl Encode for SessionBind {
     }
 }
 
+impl SessionBind {
+    /// Verify the server's signature of the session identifier
+    /// using the public `host_key`.
+    ///
+    /// > When an agent receives \[a `session-bind@openssh.com` message\],
+    /// > it will verify the signature.
+    ///
+    /// Described in [OpenSSH PROTOCOL.agent § 1](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent#L31)
+    pub fn verify_signature(&self) -> Result<(), ProtoError> {
+        self.host_key
+            .verify(self.session_id.as_slice(), &self.signature)?;
+        Ok(())
+    }
+}
+
 impl MessageExtension for SessionBind {
     const NAME: &'static str = "session-bind@openssh.com";
 }
@@ -148,6 +164,10 @@ mod tests {
         ];
         let bind = SessionBind::decode(&mut buffer)?;
         eprintln!("Bind: {bind:#?}");
+
+        // Check `signature` (of `session_id`) against
+        // server public-key `host_key`
+        bind.verify_signature()?;
 
         round_trip(bind)?;
 

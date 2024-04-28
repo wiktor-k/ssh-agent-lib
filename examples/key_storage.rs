@@ -212,7 +212,10 @@ impl Session for KeyStorage {
             }
             "session-bind@openssh.com" => match extension.parse_message::<SessionBind>()? {
                 Some(bind) => {
-                    info!("Bind: {bind:?}");
+                    bind.verify_signature()
+                        .map_err(|_| AgentError::ExtensionFailure)?;
+
+                    info!("Session binding: {bind:?}");
                     Ok(None)
                 }
                 None => Err(AgentError::Failure),

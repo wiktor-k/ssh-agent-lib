@@ -23,6 +23,10 @@ pub enum ProtoError {
     #[error("SSH key error: {0}")]
     SshKey(#[from] ssh_key::Error),
 
+    /// SSH signature error.
+    #[error("SSH signature error: {0}")]
+    SshSignature(#[from] signature::Error),
+
     /// Received command was not supported.
     #[error("Command not supported ({command})")]
     UnsupportedCommand {

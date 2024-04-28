@@ -27,10 +27,11 @@ tokio = { version = "1", optional = true, features = ["rt", "net", "time"] }
 tokio-util = { version = "0.7.1", optional = true, features = ["codec"] }
 service-binding = { version = "^2.1" }
 ssh-encoding = { version = "0.2.0" }
-ssh-key = { version = "0.6.6", features = ["rsa", "alloc"] }
+ssh-key = { version = "0.6.6", features = ["crypto", "alloc"] }
 thiserror = "1.0.58"
 #uuid = { version = "1.8.0", features = ["v4"] }
 subtle = { version = "2", default-features = false }
+signature = { version = "2.2.0", features = ["alloc"] }
 
 [features]
 default = ["agent"]
