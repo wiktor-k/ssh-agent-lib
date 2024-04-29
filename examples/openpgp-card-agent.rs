@@ -16,6 +16,11 @@
 
 use std::{sync::Arc, time::Duration};
 
+#[cfg(windows)]
+use ssh_agent_lib::agent::NamedPipeListener as Listener;
+
+#[cfg(not(windows))]
+use tokio::net::UnixListener as Listener;
 use card_backend_pcsc::PcscBackend;
 use clap::Parser;
 use openpgp_card::{
@@ -27,16 +32,16 @@ use retainer::{Cache, CacheExpiration};
 use secrecy::{ExposeSecret, SecretString};
 use service_binding::Binding;
 use ssh_agent_lib::{
-    agent::Session,
+    agent::{bind, Session, Agent},
     error::AgentError,
     proto::{AddSmartcardKeyConstrained, Identity, KeyConstraint, SignRequest, SmartcardKey},
-    Agent,
 };
 use ssh_key::{
     public::{Ed25519PublicKey, KeyData},
     Algorithm, Signature,
 };
 use testresult::TestResult;
+use tokio::net::TcpListener;
 
 struct CardAgent {
     pwds: Arc<Cache<String, SecretString>>,
@@ -51,8 +56,30 @@ impl CardAgent {
     }
 }
 
-impl Agent for CardAgent {
-    fn new_session(&mut self) -> impl Session {
+#[cfg(unix)]
+impl Agent<Listener> for CardAgent {
+    fn new_session(&mut self, _socket: &tokio::net::UnixStream) -> impl Session {
+        CardSession {
+            pwds: Arc::clone(&self.pwds),
+        }
+    }
+}
+
+#[cfg(unix)]
+impl Agent<TcpListener> for CardAgent {
+    fn new_session(&mut self, _socket: &tokio::net::TcpStream) -> impl Session {
+        CardSession {
+            pwds: Arc::clone(&self.pwds),
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Agent<Listener> for CardAgent {
+    fn new_session(
+        &mut self,
+        _socket: &tokio::net::windows::named_pipe::NamedPipeServer,
+    ) -> impl Session {
         CardSession {
             pwds: Arc::clone(&self.pwds),
         }
@@ -201,6 +228,6 @@ async fn main() -> TestResult {
     env_logger::init();
 
     let args = Args::parse();
-    CardAgent::new().bind(args.host.try_into()?).await?;
+    bind(args.host.try_into()?, CardAgent::new()).await?;
     Ok(())
 }

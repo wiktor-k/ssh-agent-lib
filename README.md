@@ -18,7 +18,7 @@ use tokio::net::UnixListener as Listener;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::error::AgentError;
-use ssh_agent_lib::agent::{Session, Agent};
+use ssh_agent_lib::agent::{Session, listen};
 use ssh_agent_lib::proto::{Identity, SignRequest};
 use ssh_key::{Algorithm, Signature};
 
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _ = std::fs::remove_file(socket); // remove the socket if exists
 
-    MyAgent.listen(Listener::bind(socket)?).await?;
+    listen(Listener::bind(socket)?, MyAgent::default()).await?;
     Ok(())
 }
 ```

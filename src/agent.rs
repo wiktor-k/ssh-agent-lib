@@ -249,69 +249,105 @@ where
     }
 }
 
-/// Type representing an agent listening for incoming connections.
-#[async_trait]
-pub trait Agent: 'static + Sync + Send + Sized {
-    /// Create new session object when a new socket is accepted.
-    fn new_session<S>(&mut self, socket: &S::Stream) -> impl Session
-    where
-        S: ListeningSocket + fmt::Debug + Send;
+/// Factory of sessions for the given type of sockets.
+pub trait Agent<S>: 'static + Send + Sync
+where
+    S: ListeningSocket + fmt::Debug + Send,
+{
+    /// Create a [`Session`] object for a given `socket`.
+    fn new_session(&mut self, socket: &S::Stream) -> impl Session;
+}
 
-    /// Listen on a socket waiting for client connections.
-    async fn listen<S>(mut self, mut socket: S) -> Result<(), AgentError>
-    where
-        S: ListeningSocket + fmt::Debug + Send,
-    {
-        log::info!("Listening; socket = {:?}", socket);
-        loop {
-            match socket.accept().await {
-                Ok(socket) => {
-                    let session = self.new_session::<S>(&socket);
-                    tokio::spawn(async move {
-                        let adapter = Framed::new(socket, Codec::<Request, Response>::default());
-                        if let Err(e) = handle_socket::<S>(session, adapter).await {
-                            log::error!("Agent protocol error: {:?}", e);
-                        }
-                    });
-                }
-                Err(e) => {
-                    log::error!("Failed to accept socket: {:?}", e);
-                    return Err(AgentError::IO(e));
-                }
+/// Listen for connections on a given socket and use session factory
+/// to create new session for each accepted socket.
+pub async fn listen<S>(mut socket: S, mut sf: impl Agent<S>) -> Result<(), AgentError>
+where
+    S: ListeningSocket + fmt::Debug + Send,
+{
+    log::info!("Listening; socket = {:?}", socket);
+    loop {
+        match socket.accept().await {
+            Ok(socket) => {
+                let session = sf.new_session(&socket);
+                tokio::spawn(async move {
+                    let adapter = Framed::new(socket, Codec::<Request, Response>::default());
+                    if let Err(e) = handle_socket::<S>(session, adapter).await {
+                        log::error!("Agent protocol error: {:?}", e);
+                    }
+                });
             }
-        }
-    }
-
-    /// Bind to a service binding listener.
-    async fn bind(mut self, listener: service_binding::Listener) -> Result<(), AgentError> {
-        match listener {
-            #[cfg(unix)]
-            service_binding::Listener::Unix(listener) => {
-                self.listen(UnixListener::from_std(listener)?).await
+            Err(e) => {
+                log::error!("Failed to accept socket: {:?}", e);
+                return Err(AgentError::IO(e));
             }
-            service_binding::Listener::Tcp(listener) => {
-                self.listen(TcpListener::from_std(listener)?).await
-            }
-            #[cfg(windows)]
-            service_binding::Listener::NamedPipe(pipe) => {
-                self.listen(NamedPipeListener::bind(pipe)?).await
-            }
-            #[cfg(not(windows))]
-            service_binding::Listener::NamedPipe(_) => Err(AgentError::IO(std::io::Error::other(
-                "Named pipes supported on Windows only",
-            ))),
         }
     }
 }
 
-impl<T> Agent for T
+#[cfg(unix)]
+impl<T> Agent<tokio::net::UnixListener> for T
 where
-    T: Default + Session,
+    T: Default + Send + Sync + Session,
 {
-    fn new_session<S>(&mut self, _socket: &S::Stream) -> impl Session
-    where
-        S: ListeningSocket + fmt::Debug + Send,
-    {
+    fn new_session(&mut self, _socket: &tokio::net::UnixStream) -> impl Session {
         Self::default()
+    }
+}
+
+impl<T> Agent<tokio::net::TcpListener> for T
+where
+    T: Default + Send + Sync + Session,
+{
+    fn new_session(&mut self, _socket: &tokio::net::TcpStream) -> impl Session {
+        Self::default()
+    }
+}
+
+#[cfg(windows)]
+impl<T> Agent<NamedPipeListener> for T
+where
+    T: Default + Send + Sync + Session,
+{
+    fn new_session(
+        &mut self,
+        _socket: &tokio::net::windows::named_pipe::NamedPipeServer,
+    ) -> impl Session {
+        Self::default()
+    }
+}
+
+/// Bind to a service binding listener.
+#[cfg(unix)]
+pub async fn bind<SF>(listener: service_binding::Listener, sf: SF) -> Result<(), AgentError>
+where
+    SF: Agent<tokio::net::UnixListener> + Agent<tokio::net::TcpListener>,
+{
+    match listener {
+        #[cfg(unix)]
+        service_binding::Listener::Unix(listener) => {
+            listen(UnixListener::from_std(listener)?, sf).await
+        }
+        service_binding::Listener::Tcp(listener) => {
+            listen(TcpListener::from_std(listener)?, sf).await
+        }
+        _ => Err(AgentError::IO(std::io::Error::other(
+            "Unsupported type of a listener.",
+        ))),
+    }
+}
+
+/// Bind to a service binding listener.
+#[cfg(windows)]
+pub async fn bind<SF>(listener: service_binding::Listener, sf: SF) -> Result<(), AgentError>
+where
+    SF: Agent<NamedPipeListener> + Agent<tokio::net::TcpListener>,
+{
+    match listener {
+        service_binding::Listener::Tcp(listener) => {
+            listen(TcpListener::from_std(listener)?, sf).await
+        }
+        service_binding::Listener::NamedPipe(pipe) => {
+            listen(NamedPipeListener::bind(pipe)?, sf).await
+        }
     }
 }
