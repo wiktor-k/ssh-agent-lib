@@ -102,7 +102,7 @@ impl CardSession {
                         let mut tx = card.transaction()?;
                         let ident = tx.application_identifier()?.ident();
                         if ident == key.id {
-                            tx.verify_pw1_user(key.pin.as_bytes())?;
+                            tx.verify_pw1_user(key.pin.expose_secret().as_bytes())?;
                             Ok::<_, Box<dyn std::error::Error>>(true)
                         } else {
                             Ok(false)
@@ -110,7 +110,7 @@ impl CardSession {
                     })
                     .any(|x| x);
                 if card_pin_matches {
-                    self.pwds.insert(key.id, key.pin.into(), expiration).await;
+                    self.pwds.insert(key.id, key.pin, expiration).await;
                     Ok(())
                 } else {
                     Err(AgentError::IO(std::io::Error::other(
