@@ -26,10 +26,8 @@ use openpgp_card::{
 use retainer::{Cache, CacheExpiration};
 use secrecy::{ExposeSecret, SecretString};
 use service_binding::Binding;
-#[cfg(windows)]
-use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::{
-    agent::{bind, Agent, Session},
+    agent::{bind, Session},
     error::AgentError,
     proto::{AddSmartcardKeyConstrained, Identity, KeyConstraint, SignRequest, SmartcardKey},
 };
@@ -38,58 +36,20 @@ use ssh_key::{
     Algorithm, Signature,
 };
 use testresult::TestResult;
-use tokio::net::TcpListener;
-#[cfg(not(windows))]
-use tokio::net::UnixListener as Listener;
 
-struct CardAgent {
+#[derive(Clone)]
+struct CardSession {
     pwds: Arc<Cache<String, SecretString>>,
 }
 
-impl CardAgent {
+impl CardSession {
     pub fn new() -> Self {
         let pwds: Arc<Cache<String, SecretString>> = Arc::new(Default::default());
         let clone = Arc::clone(&pwds);
         tokio::spawn(async move { clone.monitor(4, 0.25, Duration::from_secs(3)).await });
         Self { pwds }
     }
-}
 
-#[cfg(unix)]
-impl Agent<Listener> for CardAgent {
-    fn new_session(&mut self, _socket: &tokio::net::UnixStream) -> impl Session {
-        CardSession {
-            pwds: Arc::clone(&self.pwds),
-        }
-    }
-}
-
-#[cfg(unix)]
-impl Agent<TcpListener> for CardAgent {
-    fn new_session(&mut self, _socket: &tokio::net::TcpStream) -> impl Session {
-        CardSession {
-            pwds: Arc::clone(&self.pwds),
-        }
-    }
-}
-
-#[cfg(windows)]
-impl Agent<Listener> for CardAgent {
-    fn new_session(
-        &mut self,
-        _socket: &tokio::net::windows::named_pipe::NamedPipeServer,
-    ) -> impl Session {
-        CardSession {
-            pwds: Arc::clone(&self.pwds),
-        }
-    }
-}
-
-struct CardSession {
-    pwds: Arc<Cache<String, SecretString>>,
-}
-
-impl CardSession {
     async fn handle_sign(
         &self,
         request: SignRequest,
@@ -227,6 +187,6 @@ async fn main() -> TestResult {
     env_logger::init();
 
     let args = Args::parse();
-    bind(args.host.try_into()?, CardAgent::new()).await?;
+    bind(args.host.try_into()?, CardSession::new()).await?;
     Ok(())
 }

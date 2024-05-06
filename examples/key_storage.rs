@@ -9,7 +9,7 @@ use rsa::BigUint;
 use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
-use ssh_agent_lib::agent::{listen, Agent, Session};
+use ssh_agent_lib::agent::{listen, Session};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::{QueryResponse, RestrictDestination, SessionBind};
 use ssh_agent_lib::proto::{
@@ -31,6 +31,7 @@ struct Identity {
     comment: String,
 }
 
+#[derive(Default, Clone)]
 struct KeyStorage {
     identities: Arc<Mutex<Vec<Identity>>>,
 }
@@ -224,39 +225,6 @@ impl Session for KeyStorage {
     }
 }
 
-struct KeyStorageAgent {
-    identities: Arc<Mutex<Vec<Identity>>>,
-}
-
-impl KeyStorageAgent {
-    fn new() -> Self {
-        Self {
-            identities: Arc::new(Mutex::new(vec![])),
-        }
-    }
-}
-
-#[cfg(unix)]
-impl Agent<Listener> for KeyStorageAgent {
-    fn new_session(&mut self, _socket: &tokio::net::UnixStream) -> impl Session {
-        KeyStorage {
-            identities: Arc::clone(&self.identities),
-        }
-    }
-}
-
-#[cfg(windows)]
-impl Agent<Listener> for KeyStorageAgent {
-    fn new_session(
-        &mut self,
-        _socket: &tokio::net::windows::named_pipe::NamedPipeServer,
-    ) -> impl Session {
-        KeyStorage {
-            identities: Arc::clone(&self.identities),
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<(), AgentError> {
     env_logger::init();
@@ -272,6 +240,6 @@ async fn main() -> Result<(), AgentError> {
     #[cfg(windows)]
     std::fs::File::create("server-started")?;
 
-    listen(Listener::bind(socket)?, KeyStorageAgent::new()).await?;
+    listen(Listener::bind(socket)?, KeyStorage::default()).await?;
     Ok(())
 }

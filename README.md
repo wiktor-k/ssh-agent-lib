@@ -22,7 +22,7 @@ use ssh_agent_lib::agent::{Session, listen};
 use ssh_agent_lib::proto::{Identity, SignRequest};
 use ssh_key::{Algorithm, Signature};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct MyAgent;
 
 #[ssh_agent_lib::async_trait]

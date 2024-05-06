@@ -287,32 +287,32 @@ where
 #[cfg(unix)]
 impl<T> Agent<tokio::net::UnixListener> for T
 where
-    T: Default + Send + Sync + Session,
+    T: Clone + Send + Sync + Session,
 {
     fn new_session(&mut self, _socket: &tokio::net::UnixStream) -> impl Session {
-        Self::default()
+        Self::clone(self)
     }
 }
 
 impl<T> Agent<tokio::net::TcpListener> for T
 where
-    T: Default + Send + Sync + Session,
+    T: Clone + Send + Sync + Session,
 {
     fn new_session(&mut self, _socket: &tokio::net::TcpStream) -> impl Session {
-        Self::default()
+        Self::clone(self)
     }
 }
 
 #[cfg(windows)]
 impl<T> Agent<NamedPipeListener> for T
 where
-    T: Default + Send + Sync + Session,
+    T: Clone + Send + Sync + Session,
 {
     fn new_session(
         &mut self,
         _socket: &tokio::net::windows::named_pipe::NamedPipeServer,
     ) -> impl Session {
-        Self::default()
+        Self::clone(self)
     }
 }
 
