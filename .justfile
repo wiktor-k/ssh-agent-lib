@@ -1,4 +1,8 @@
 #!/usr/bin/env -S just --working-directory . --justfile
+# Load project-specific properties from the `.env` file
+
+set dotenv-load := true
+
 # Since this is a first recipe it's being run by default.
 # Faster checks need to be executed first for better UX.  For example
 
@@ -30,6 +34,16 @@ tests:
 # Build docs for this crate only
 docs:
     cargo doc --no-deps
+
+# Installs packages required to build
+[linux]
+install-packages:
+    sudo apt-get install --assume-yes --no-install-recommends $UBUNTU_PACKAGES
+
+[macos]
+[windows]
+install-packages:
+    echo no-op
 
 # Checks for commit messages
 check-commits REFS='main..':
