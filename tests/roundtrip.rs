@@ -15,7 +15,15 @@ where
     eprintln!("Message: {message:#?}");
     let mut out = vec![];
     message.encode(&mut out)?;
-    assert_eq!(serialized, out);
+    assert_eq!(
+        serialized, out,
+        "roundtripped message should be exactly identical to saved sample"
+    );
+    assert_eq!(
+        out.len(),
+        message.encoded_len()?,
+        "the encoded message length should be equal to saved sample"
+    );
     Ok(())
 }
 
