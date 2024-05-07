@@ -446,7 +446,7 @@ impl Encode for KeyConstraint {
             Self::Extension(extension) => [
                 base,
                 extension.name.encoded_len()?,
-                extension.details.0.encoded_len()?,
+                extension.details.encoded_len()?,
             ]
             .checked_sum(),
         }
@@ -462,7 +462,7 @@ impl Encode for KeyConstraint {
             Self::Extension(extension) => {
                 255u8.encode(writer)?;
                 extension.name.encode(writer)?;
-                extension.details.0.encode(writer)
+                extension.details.encode(writer)
             }
         }
     }
