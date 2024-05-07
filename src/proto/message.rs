@@ -617,7 +617,12 @@ impl Decode for Extension {
 
 impl Encode for Extension {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
-        [self.name.encoded_len()?, self.details.0.encoded_len()?].checked_sum()
+        // NOTE: the below implementation of Encode::encode for Extension
+        // directly writes the bytes in `self.details` (and does not
+        // call Vec<u8>::encode). Vec<u8>::encoded_len counts 4 extra bytes
+        // for the u32 length field that Vec<u8>::encode would prepend.
+        // Therefore, use self.details.0's length directly.
+        [self.name.encoded_len()?, self.details.0.len()].checked_sum()
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
