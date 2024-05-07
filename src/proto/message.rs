@@ -622,10 +622,7 @@ impl Encode for Extension {
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
         self.name.encode(writer)?;
-
-        // NOTE: extension messages do not contain a length,
-        // as the inner Vec<u8> will be encoded with it's own length.
-        writer.write(&self.details.0[..])?;
+        self.details.encode(writer)?;
         Ok(())
     }
 }
@@ -657,7 +654,12 @@ impl Encode for Unparsed {
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        self.0.encode(writer)
+        // NOTE: Unparsed fields do not embed a length u32,
+        // as the inner Vec<u8> encoding is implementation-defined
+        // (usually an Extension)
+        writer.write(&self.0[..])?;
+
+        Ok(())
     }
 }
 
