@@ -1,5 +1,6 @@
 //! Agent protocol message structures.
 
+pub mod identity;
 pub mod unparsed;
 
 use core::str::FromStr;
@@ -9,68 +10,13 @@ use ssh_key::{
     certificate::Certificate, private::KeypairData, public::KeyData, Algorithm, Error, Signature,
 };
 
-pub use self::unparsed::*;
+pub use self::{identity::*, unparsed::*};
 use super::{
     extension::{KeyConstraintExtension, MessageExtension},
     PrivateKeyData, ProtoError,
 };
 
 type Result<T> = core::result::Result<T, ProtoError>;
-
-/// Data returned to the client when listing keys.
-///
-/// A list of these structures are sent in a [`Response::IdentitiesAnswer`] (`SSH_AGENT_IDENTITIES_ANSWER`) message body.
-///
-/// Described in [draft-miller-ssh-agent-14 § 3.5](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.5)
-#[derive(Clone, PartialEq, Debug)]
-pub struct Identity {
-    /// A standard public-key encoding of an underlying key.
-    pub pubkey: KeyData,
-
-    /// A human-readable comment
-    pub comment: String,
-}
-
-impl Identity {
-    fn decode_vec(reader: &mut impl Reader) -> Result<Vec<Self>> {
-        let len = u32::decode(reader)?;
-        let mut identities = vec![];
-
-        for _ in 0..len {
-            identities.push(Self::decode(reader)?);
-        }
-
-        Ok(identities)
-    }
-}
-
-impl Decode for Identity {
-    type Error = ProtoError;
-
-    fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let pubkey = reader.read_prefixed(KeyData::decode)?;
-        let comment = String::decode(reader)?;
-
-        Ok(Self { pubkey, comment })
-    }
-}
-
-impl Encode for Identity {
-    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
-        [
-            self.pubkey.encoded_len_prefixed()?,
-            self.comment.encoded_len()?,
-        ]
-        .checked_sum()
-    }
-
-    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        self.pubkey.encode_prefixed(writer)?;
-        self.comment.encode(writer)?;
-
-        Ok(())
-    }
-}
 
 /// Signature request with data to be signed with a key in an agent.
 ///
