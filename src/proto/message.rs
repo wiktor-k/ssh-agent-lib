@@ -1,5 +1,7 @@
 //! Agent protocol message structures.
 
+pub mod unparsed;
+
 use core::str::FromStr;
 
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
@@ -7,6 +9,7 @@ use ssh_key::{
     certificate::Certificate, private::KeypairData, public::KeyData, Algorithm, Error, Signature,
 };
 
+pub use self::unparsed::*;
 use super::{
     extension::{KeyConstraintExtension, MessageExtension},
     PrivateKeyData, ProtoError,
@@ -546,7 +549,7 @@ impl Extension {
         extension.encode(&mut buffer)?;
         Ok(Self {
             name: T::NAME.into(),
-            details: Unparsed(buffer),
+            details: buffer.into(),
         })
     }
 
@@ -578,7 +581,7 @@ impl Extension {
         extension.encode(&mut buffer)?;
         Ok(Self {
             name: T::NAME.into(),
-            details: Unparsed(buffer),
+            details: buffer.into(),
         })
     }
 
@@ -623,42 +626,6 @@ impl Encode for Extension {
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
         self.name.encode(writer)?;
         self.details.encode(writer)?;
-        Ok(())
-    }
-}
-
-/// Generic container for [`Extension`]-specific content
-#[derive(Debug, PartialEq, Clone)]
-pub struct Unparsed(pub Vec<u8>);
-
-impl Unparsed {
-    /// Decode unparsed bytes as SSH structures.
-    pub fn parse<T>(&self) -> std::result::Result<T, <T as Decode>::Error>
-    where
-        T: Decode,
-    {
-        let mut v = &self.0[..];
-        T::decode(&mut v)
-    }
-}
-
-impl From<Vec<u8>> for Unparsed {
-    fn from(value: Vec<u8>) -> Self {
-        Self(value)
-    }
-}
-
-impl Encode for Unparsed {
-    fn encoded_len(&self) -> ssh_encoding::Result<usize> {
-        Ok(self.0.len())
-    }
-
-    fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        // NOTE: Unparsed fields do not embed a length u32,
-        // as the inner Vec<u8> encoding is implementation-defined
-        // (usually an Extension)
-        writer.write(&self.0[..])?;
-
         Ok(())
     }
 }
@@ -1056,7 +1023,7 @@ mod tests {
             },
             constraints: vec![KeyConstraint::Extension(Extension {
                 name: "restrict-destination-v00@openssh.com".to_string(),
-                details: Unparsed(
+                details: Unparsed::from(
                     hex!(
                         "                                    00
                         0002 6f00 0000 0c00 0000 0000 0000 0000
