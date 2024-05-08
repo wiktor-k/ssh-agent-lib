@@ -446,7 +446,7 @@ impl Encode for KeyConstraint {
             Self::Extension(extension) => [
                 base,
                 extension.name.encoded_len()?,
-                extension.details.encoded_len()?,
+                extension.details.encoded_len_prefixed()?,
             ]
             .checked_sum(),
         }
@@ -462,7 +462,7 @@ impl Encode for KeyConstraint {
             Self::Extension(extension) => {
                 255u8.encode(writer)?;
                 extension.name.encode(writer)?;
-                extension.details.encode(writer)
+                extension.details.encode_prefixed(writer)
             }
         }
     }
@@ -984,6 +984,7 @@ mod tests {
 
         let mut buf = vec![];
         expected.encode(&mut buf).expect("serialize message");
+        assert_eq!(expected.encoded_len().expect("len message"), buf.len());
         assert_eq!(buf, msg);
 
         let msg: &[u8] = &hex!(
@@ -1108,6 +1109,7 @@ mod tests {
 
         let mut buf = vec![];
         expected.encode(&mut buf).expect("serialize message");
+        assert_eq!(expected.encoded_len().expect("len message"), buf.len());
         assert_eq!(buf, msg);
     }
 
