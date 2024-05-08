@@ -3,8 +3,7 @@
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
 use ssh_key::public::KeyData;
 
-use super::Result;
-use crate::proto::ProtoError;
+use crate::proto::{Error, Result};
 
 /// Data returned to the client when listing keys.
 ///
@@ -34,7 +33,7 @@ impl Identity {
 }
 
 impl Decode for Identity {
-    type Error = ProtoError;
+    type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let pubkey = reader.read_prefixed(KeyData::decode)?;

@@ -3,8 +3,7 @@
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
 use ssh_key::public::KeyData;
 
-use super::Result;
-use crate::proto::ProtoError;
+use crate::proto::{Error, Result};
 
 /// Signature request with data to be signed with a key in an agent.
 ///
@@ -25,7 +24,7 @@ pub struct SignRequest {
 }
 
 impl Decode for SignRequest {
-    type Error = ProtoError;
+    type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let pubkey = reader.read_prefixed(KeyData::decode)?;
