@@ -19,7 +19,7 @@
 //!  ```ignore
 //!  use ssh_agent_lib::proto::Request;
 //!
-//!  make_expected_fn!(get_expected_request, Request, {
+//!  make_expected_fn!(get_expected_request -> Request, {
 //!      req_hello
 //!  });
 //!  ```
@@ -28,8 +28,9 @@
 //!
 //!  ```ignore
 //!  let test_data_path = PathBuf::from("test/messages/req-hello.bin");
-//!  let expected = path::to::get_expected_request(&test_data_path);
-//!  assert_eq!(expected, ...);
+//!  if let Some(expected) = path::to::get_expected_request(&test_data_path) {
+//!      assert_eq!(expected, ...);
+//!  }
 //!  ```
 //!
 //!  ## `path/to/req_hello.rs` ##
