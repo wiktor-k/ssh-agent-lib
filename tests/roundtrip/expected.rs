@@ -1,3 +1,4 @@
+mod fixtures;
 #[macro_use]
 mod macros;
 
@@ -18,7 +19,12 @@ use ssh_agent_lib::proto::{Request, Response};
 //
 // The macro also declares the listed modules.
 make_expected_fn!(request -> Request, {
+    req_add_identity_ecdsa,
+    req_add_identity_constrained_lifetime,
+    req_add_identity_constrained_extension_restrict_destination,
+    req_parse_certificates
 });
 
 make_expected_fn!(response -> Response, {
+    resp_parse_identities
 });
