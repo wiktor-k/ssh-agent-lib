@@ -27,10 +27,9 @@ use retainer::{Cache, CacheExpiration};
 use secrecy::{ExposeSecret, SecretString};
 use service_binding::Binding;
 use ssh_agent_lib::{
-    agent::Session,
+    agent::{bind, Session},
     error::AgentError,
     proto::{AddSmartcardKeyConstrained, Identity, KeyConstraint, SignRequest, SmartcardKey},
-    Agent,
 };
 use ssh_key::{
     public::{Ed25519PublicKey, KeyData},
@@ -38,32 +37,19 @@ use ssh_key::{
 };
 use testresult::TestResult;
 
-struct CardAgent {
+#[derive(Clone)]
+struct CardSession {
     pwds: Arc<Cache<String, SecretString>>,
 }
 
-impl CardAgent {
+impl CardSession {
     pub fn new() -> Self {
         let pwds: Arc<Cache<String, SecretString>> = Arc::new(Default::default());
         let clone = Arc::clone(&pwds);
         tokio::spawn(async move { clone.monitor(4, 0.25, Duration::from_secs(3)).await });
         Self { pwds }
     }
-}
 
-impl Agent for CardAgent {
-    fn new_session(&mut self) -> impl Session {
-        CardSession {
-            pwds: Arc::clone(&self.pwds),
-        }
-    }
-}
-
-struct CardSession {
-    pwds: Arc<Cache<String, SecretString>>,
-}
-
-impl CardSession {
     async fn handle_sign(
         &self,
         request: SignRequest,
@@ -201,6 +187,6 @@ async fn main() -> TestResult {
     env_logger::init();
 
     let args = Args::parse();
-    CardAgent::new().bind(args.host.try_into()?).await?;
+    bind(args.host.try_into()?, CardSession::new()).await?;
     Ok(())
 }
