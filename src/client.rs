@@ -37,18 +37,18 @@ where
 }
 
 /// Wrap a stream into an SSH agent client.
-pub async fn connect(
+pub fn connect(
     stream: service_binding::Stream,
-) -> Result<std::pin::Pin<Box<dyn crate::agent::Session>>, Box<dyn std::error::Error>> {
+) -> Result<Box<dyn crate::agent::Session>, Box<dyn std::error::Error>> {
     match stream {
         #[cfg(unix)]
         service_binding::Stream::Unix(stream) => {
             let stream = tokio::net::UnixStream::from_std(stream)?;
-            Ok(Box::pin(Client::new(stream)))
+            Ok(Box::new(Client::new(stream)))
         }
         service_binding::Stream::Tcp(stream) => {
             let stream = tokio::net::TcpStream::from_std(stream)?;
-            Ok(Box::pin(Client::new(stream)))
+            Ok(Box::new(Client::new(stream)))
         }
         #[cfg(windows)]
         service_binding::Stream::NamedPipe(pipe) => {
@@ -65,9 +65,9 @@ pub async fn connect(
                     Err(e) => Err(e)?,
                 }
 
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                std::thread::sleep(std::time::Duration::from_millis(50));
             };
-            Ok(Box::pin(Client::new(stream)))
+            Ok(Box::new(Client::new(stream)))
         }
         #[cfg(not(windows))]
         service_binding::Stream::NamedPipe(_) => Err(ProtoError::IO(std::io::Error::other(
