@@ -33,7 +33,7 @@
 //!
 //! Works perfectly in conjunction with `openpgp-card-agent.rs`!
 
-use std::{cell::RefCell, pin::Pin};
+use std::cell::RefCell;
 
 use chrono::DateTime;
 use clap::Parser;
@@ -55,11 +55,11 @@ use tokio::runtime::Runtime;
 struct WrappedKey {
     public_key: PublicKey,
     pubkey: KeyData,
-    client: RefCell<Pin<Box<dyn Session>>>,
+    client: RefCell<Box<dyn Session>>,
 }
 
 impl WrappedKey {
-    fn new(pubkey: KeyData, client: Pin<Box<dyn Session>>) -> Self {
+    fn new(pubkey: KeyData, client: Box<dyn Session>) -> Self {
         let KeyData::Ed25519(key) = pubkey.clone() else {
             panic!("The first key was not ed25519!");
         };
@@ -206,11 +206,11 @@ fn main() -> testresult::TestResult {
     let (client, identities) = rt.block_on(async move {
         #[cfg(unix)]
         let mut client =
-            connect(Binding::FilePath(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?).await?;
+            connect(Binding::FilePath(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?)?;
 
         #[cfg(windows)]
         let mut client =
-            connect(Binding::NamedPipe(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?).await?;
+            connect(Binding::NamedPipe(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?)?;
 
         let identities = client.request_identities().await?;
 
