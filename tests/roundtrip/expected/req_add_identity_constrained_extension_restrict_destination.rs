@@ -1,5 +1,7 @@
 use hex_literal::hex;
-use ssh_agent_lib::proto::{AddIdentity, AddIdentityConstrained, Credential, Extension, KeyConstraint, Request, Unparsed};
+use ssh_agent_lib::proto::{
+    AddIdentity, AddIdentityConstrained, Credential, Extension, KeyConstraint, Request, Unparsed,
+};
 use ssh_key::private::KeypairData;
 
 use super::fixtures;
@@ -14,7 +16,7 @@ pub fn expected() -> Request {
         },
         constraints: vec![KeyConstraint::Extension(Extension {
             name: "restrict-destination-v00@openssh.com".to_string(),
-            details: Unparsed::from(
+            details: Unparsed::from_raw(
                 hex!(
                     "                                    00
                     0002 6f00 0000 0c00 0000 0000 0000 0000

@@ -44,7 +44,7 @@ impl Decode for KeyConstraint {
                 let details: Vec<u8> = Vec::decode(reader)?;
                 KeyConstraint::Extension(Extension {
                     name,
-                    details: Unparsed::from(details),
+                    details: Unparsed::from_raw(details),
                 })
             }
             _ => return Err(KeyError::AlgorithmUnknown)?, // FIXME: it should be our own type

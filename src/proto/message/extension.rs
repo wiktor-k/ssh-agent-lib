@@ -32,11 +32,9 @@ impl Extension {
     where
         T: MessageExtension + Encode,
     {
-        let mut buffer: Vec<u8> = vec![];
-        extension.encode(&mut buffer)?;
         Ok(Self {
             name: T::NAME.into(),
-            details: buffer.into(),
+            details: Unparsed::new(&extension)?,
         })
     }
 
@@ -64,11 +62,9 @@ impl Extension {
     where
         T: KeyConstraintExtension + Encode,
     {
-        let mut buffer: Vec<u8> = vec![];
-        extension.encode(&mut buffer)?;
         Ok(Self {
             name: T::NAME.into(),
-            details: buffer.into(),
+            details: Unparsed::new(&extension)?,
         })
     }
 
@@ -100,7 +96,7 @@ impl Decode for Extension {
         reader.read(&mut details)?;
         Ok(Self {
             name,
-            details: details.into(),
+            details: Unparsed::from_raw(details),
         })
     }
 }

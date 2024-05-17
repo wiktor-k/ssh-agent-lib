@@ -18,14 +18,24 @@ impl Unparsed {
     }
 
     /// Expose the inner content in raw format.
-    pub fn as_slice(&self) -> &[u8] {
+    pub fn as_raw(&self) -> &[u8] {
         self.0.as_slice()
     }
-}
 
-impl From<Vec<u8>> for Unparsed {
-    fn from(value: Vec<u8>) -> Self {
+    /// Creates a new value from a raw content
+    pub fn from_raw(value: Vec<u8>) -> Self {
         Self(value)
+    }
+
+    /// Creates an [`Unparsed`] content from a value.
+    /// The value will be encoded according to [`ssh_encoding::Encode`].
+    pub fn new<T>(value: &T) -> ssh_encoding::Result<Self>
+    where
+        T: ssh_encoding::Encode,
+    {
+        let mut buffer: Vec<u8> = vec![];
+        value.encode(&mut buffer)?;
+        Ok(Self(buffer))
     }
 }
 
