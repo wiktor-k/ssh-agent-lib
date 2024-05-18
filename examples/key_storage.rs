@@ -5,7 +5,6 @@ use log::info;
 use rsa::pkcs1v15::SigningKey;
 use rsa::sha2::{Sha256, Sha512};
 use rsa::signature::{RandomizedSigner, SignatureEncoding};
-use rsa::BigUint;
 use sha1::Sha1;
 #[cfg(windows)]
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
@@ -82,13 +81,8 @@ impl Session for KeyStorage {
                 KeypairData::Rsa(ref key) => {
                     let algorithm;
 
-                    let private_key = rsa::RsaPrivateKey::from_components(
-                        BigUint::from_bytes_be(key.public.n.as_bytes()),
-                        BigUint::from_bytes_be(key.public.e.as_bytes()),
-                        BigUint::from_bytes_be(key.private.d.as_bytes()),
-                        vec![],
-                    )
-                    .map_err(AgentError::other)?;
+                    let private_key: rsa::RsaPrivateKey =
+                        key.try_into().map_err(AgentError::other)?;
                     let mut rng = rand::thread_rng();
                     let data = &sign_request.data;
 
