@@ -16,11 +16,22 @@ impl Unparsed {
         let mut v = &self.0[..];
         T::decode(&mut v)
     }
+
+    /// Obtain the unparsed bytes as a `Vec<u8>`, consuming the `Unparsed`
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
 }
 
 impl From<Vec<u8>> for Unparsed {
     fn from(value: Vec<u8>) -> Self {
         Self(value)
+    }
+}
+
+impl AsRef<[u8]> for Unparsed {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }
 
