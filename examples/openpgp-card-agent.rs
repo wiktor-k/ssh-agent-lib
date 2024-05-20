@@ -20,7 +20,7 @@ use card_backend_pcsc::PcscBackend;
 use clap::Parser;
 use openpgp_card::{
     algorithm::AlgorithmAttributes,
-    crypto_data::{EccType, PublicKeyMaterial},
+    crypto_data::{Cryptogram, EccType, PublicKeyMaterial},
     Card, KeyType,
 };
 use retainer::{Cache, CacheExpiration};
@@ -29,13 +29,20 @@ use service_binding::Binding;
 use ssh_agent_lib::{
     agent::{bind, Session},
     error::AgentError,
-    proto::{AddSmartcardKeyConstrained, Identity, KeyConstraint, SignRequest, SmartcardKey},
+    proto::{
+        extension::MessageExtension, AddSmartcardKeyConstrained, Extension, Identity,
+        KeyConstraint, ProtoError, SignRequest, SmartcardKey,
+    },
 };
 use ssh_key::{
     public::{Ed25519PublicKey, KeyData},
     Algorithm, Signature,
 };
 use testresult::TestResult;
+mod extensions;
+use extensions::{
+    DecryptDeriveRequest, DecryptDeriveResponse, DecryptIdentities, RequestDecryptIdentities,
+};
 
 #[derive(Clone)]
 struct CardSession {
@@ -114,6 +121,36 @@ impl CardSession {
             Err(error) => Err(AgentError::other(error)),
         }
     }
+
+    async fn decrypt_derive(
+        &mut self,
+        req: DecryptDeriveRequest,
+    ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error + Send + Sync>> {
+        if let Ok(cards) = PcscBackend::cards(None) {
+            for card in cards {
+                let mut card = Card::new(card?)?;
+                let mut tx = card.transaction()?;
+                if let PublicKeyMaterial::E(e) = tx.public_key(KeyType::Decryption)? {
+                    if let AlgorithmAttributes::Ecc(ecc) = e.algo() {
+                        if ecc.ecc_type() == EccType::ECDH {
+                            let pubkey = KeyData::Ed25519(Ed25519PublicKey(e.data().try_into()?));
+                            if pubkey == req.pubkey {
+                                let ident = tx.application_identifier()?.ident();
+                                let pin = self.pwds.get(&ident).await;
+                                if let Some(pin) = pin {
+                                    tx.verify_pw1_user(pin.expose_secret().as_bytes())?;
+
+                                    let data = tx.decipher(Cryptogram::ECDH(&req.data))?;
+                                    return Ok(Some(data));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
 }
 
 #[ssh_agent_lib::async_trait]
@@ -173,6 +210,62 @@ impl Session for CardSession {
 
     async fn sign(&mut self, request: SignRequest) -> Result<Signature, AgentError> {
         self.handle_sign(request).await.map_err(AgentError::Other)
+    }
+
+    async fn extension(&mut self, extension: Extension) -> Result<Option<Extension>, AgentError> {
+        if extension.name == RequestDecryptIdentities::NAME {
+            let identities = if let Ok(cards) = PcscBackend::cards(None) {
+                cards
+                    .flat_map(|card| {
+                        let mut card = Card::new(card?)?;
+                        let mut tx = card.transaction()?;
+                        let ident = tx.application_identifier()?.ident();
+                        if let PublicKeyMaterial::E(e) = tx.public_key(KeyType::Decryption)? {
+                            if let AlgorithmAttributes::Ecc(ecc) = e.algo() {
+                                if ecc.ecc_type() == EccType::ECDH {
+                                    return Ok::<_, Box<dyn std::error::Error>>(Some(Identity {
+                                        pubkey: KeyData::Ed25519(Ed25519PublicKey(
+                                            e.data().try_into()?,
+                                        )),
+                                        comment: ident,
+                                    }));
+                                }
+                            }
+                        }
+                        Ok(None)
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>()
+            } else {
+                vec![]
+            };
+
+            Ok(Some(
+                Extension::new_message(DecryptIdentities { identities })
+                    .map_err(AgentError::other)?,
+            ))
+        } else if extension.name == DecryptDeriveRequest::NAME {
+            let req = extension
+                .parse_message::<DecryptDeriveRequest>()?
+                .expect("message to be there");
+
+            let decrypted = self.decrypt_derive(req).await.map_err(AgentError::Other)?;
+
+            if let Some(decrypted) = decrypted {
+                Ok(Some(
+                    Extension::new_message(DecryptDeriveResponse { data: decrypted })
+                        .map_err(AgentError::other)?,
+                ))
+            } else {
+                Err(AgentError::from(ProtoError::UnsupportedCommand {
+                    command: 27,
+                }))
+            }
+        } else {
+            Err(AgentError::from(ProtoError::UnsupportedCommand {
+                command: 27,
+            }))
+        }
     }
 }
 

@@ -32,63 +32,194 @@
 //! ```
 //!
 //! Works perfectly in conjunction with `openpgp-card-agent.rs`!
+//!
+//! If the SSH agent implements `decrypt derive` extension this agent additionally
+//! creates encryption capable subkey and supports the `decrypt` subcommand:
+//!
+//! ```sh
+//! echo I like strawberries | gpg -er 4EB27E153DDC454364B36B59A142E92C91BE3AD5 > /tmp/encrypted.pgp
+//! SSH_AUTH_SOCK=/tmp/ext-agent.sock cargo run --example pgp-wrapper -- decrypt < /tmp/encrypted.pgp
+//! ...
+//! I like strawberries
+//! ```
 
-use std::cell::RefCell;
+use std::io::Write as _;
 
 use chrono::DateTime;
 use clap::Parser;
 use pgp::{
     crypto::{ecc_curve::ECCCurve, hash::HashAlgorithm, public_key::PublicKeyAlgorithm},
     packet::{
-        KeyFlags, PublicKey, SignatureConfig, SignatureType, SignatureVersion, Subpacket,
-        SubpacketData, UserId,
+        KeyFlags, PacketTrait, PublicKey, SignatureConfig, SignatureType, SignatureVersion,
+        Subpacket, SubpacketData, UserId,
     },
     ser::Serialize,
-    types::{KeyTrait, KeyVersion, Mpi, PublicKeyTrait, PublicParams, SecretKeyTrait, Version},
-    KeyDetails, Signature,
+    types::{
+        CompressionAlgorithm, KeyTrait, KeyVersion, Mpi, PublicKeyTrait, PublicParams,
+        SecretKeyTrait, Version,
+    },
+    Deserializable as _, Esk, KeyDetails, Message, PlainSessionKey, Signature,
 };
 use service_binding::Binding;
-use ssh_agent_lib::{agent::Session, client::connect, proto::SignRequest};
+use ssh_agent_lib::{
+    agent::Session,
+    client::connect,
+    proto::{Extension, SignRequest},
+};
 use ssh_key::public::KeyData;
 use tokio::runtime::Runtime;
+use tokio::sync::Mutex;
+mod extensions;
+use extensions::{
+    DecryptDeriveRequest, DecryptDeriveResponse, DecryptIdentities, RequestDecryptIdentities,
+};
 
 struct WrappedKey {
     public_key: PublicKey,
     pubkey: KeyData,
-    client: RefCell<Box<dyn Session>>,
+    client: Mutex<Box<dyn Session>>,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum KeyRole {
+    Signing,
+    Decryption,
+}
+
+impl From<KeyRole> for PublicKeyAlgorithm {
+    fn from(value: KeyRole) -> Self {
+        match value {
+            KeyRole::Signing => PublicKeyAlgorithm::EdDSA,
+            KeyRole::Decryption => PublicKeyAlgorithm::ECDH,
+        }
+    }
+}
+
+fn ssh_to_pgp(pubkey: KeyData, key_role: KeyRole) -> PublicKey {
+    let KeyData::Ed25519(key) = pubkey.clone() else {
+        panic!("The first key was not ed25519!");
+    };
+
+    let mut key_bytes = key.0.to_vec();
+    // Add prefix to mark that this MPI uses EdDSA point representation.
+    // See https://datatracker.ietf.org/doc/draft-koch-eddsa-for-openpgp/
+    key_bytes.insert(0, 0x40);
+
+    let public_params = match key_role {
+        KeyRole::Signing => PublicParams::EdDSA {
+            curve: ECCCurve::Ed25519,
+            q: key_bytes.into(),
+        },
+        // most common values taken from
+        // https://gitlab.com/sequoia-pgp/sequoia/-/issues/838#note_909813463
+        KeyRole::Decryption => PublicParams::ECDH {
+            curve: ECCCurve::Curve25519,
+            p: key_bytes.into(),
+            hash: HashAlgorithm::SHA2_256,
+            alg_sym: pgp::crypto::sym::SymmetricKeyAlgorithm::AES128,
+        },
+    };
+
+    PublicKey::new(
+        Version::New,
+        KeyVersion::V4,
+        key_role.into(),
+        // use fixed date so that the fingerprint generation is deterministic
+        DateTime::parse_from_rfc3339("2016-09-06T17:00:00+02:00")
+            .expect("date to be valid")
+            .into(),
+        None,
+        public_params,
+    )
+    .expect("key to be valid")
 }
 
 impl WrappedKey {
-    fn new(pubkey: KeyData, client: Box<dyn Session>) -> Self {
-        let KeyData::Ed25519(key) = pubkey.clone() else {
-            panic!("The first key was not ed25519!");
-        };
-
-        let mut key_bytes = key.0.to_vec();
-        // Add prefix to mark that this MPI uses EdDSA point representation.
-        // See https://datatracker.ietf.org/doc/draft-koch-eddsa-for-openpgp/
-        key_bytes.insert(0, 0x40);
-
-        let public_key = PublicKey::new(
-            Version::New,
-            KeyVersion::V4,
-            PublicKeyAlgorithm::EdDSA,
-            // use fixed date so that the fingerprint generation is deterministic
-            DateTime::parse_from_rfc3339("2016-09-06T17:00:00+02:00")
-                .expect("date to be valid")
-                .into(),
-            None,
-            PublicParams::EdDSA {
-                curve: ECCCurve::Ed25519,
-                q: key_bytes.into(),
-            },
-        )
-        .expect("key to be valid");
-
+    fn new(pubkey: KeyData, client: Box<dyn Session>, key_role: KeyRole) -> Self {
+        let public_key = ssh_to_pgp(pubkey.clone(), key_role);
         Self {
             pubkey,
-            client: RefCell::new(client),
+            client: Mutex::new(client),
             public_key,
+        }
+    }
+
+    fn decrypt(
+        &self,
+        mpis: &[Mpi],
+    ) -> Result<(Vec<u8>, pgp::crypto::sym::SymmetricKeyAlgorithm), pgp::errors::Error> {
+        if let PublicParams::ECDH {
+            curve,
+            alg_sym,
+            hash,
+            ..
+        } = self.public_key().public_params()
+        {
+            let ciphertext = mpis[0].as_bytes();
+
+            // encrypted and wrapped value derived from the session key
+            let encrypted_session_key = mpis[2].as_bytes();
+
+            let ciphertext = if *curve == ECCCurve::Curve25519 {
+                assert_eq!(
+                    ciphertext[0], 0x40,
+                    "Unexpected shape of Cv25519 encrypted data"
+                );
+
+                // Strip trailing 0x40
+                &ciphertext[1..]
+            } else {
+                unimplemented!();
+            };
+
+            let plaintext = Runtime::new()
+                .expect("creating runtime to succeed")
+                .handle()
+                .block_on(async {
+                    let mut client = self.client.lock().await;
+                    let result = client.extension(
+                        Extension::new_message(DecryptDeriveRequest {
+                            pubkey: self.pubkey.clone(),
+                            data: ciphertext.to_vec(),
+                            flags: 0,
+                        })
+                        .expect("encoding to work"),
+                    );
+                    result.await
+                })
+                .expect("decryption to succeed")
+                .expect("result not to be empty");
+
+            let shared_secret = &plaintext
+                .parse_message::<DecryptDeriveResponse>()
+                .expect("decoding to succeed")
+                .expect("not to be empty")
+                .data[..];
+
+            let encrypted_key_len: usize = mpis[1].first().copied().map(Into::into).unwrap_or(0);
+
+            let decrypted_key: Vec<u8> = pgp::crypto::ecdh::derive_session_key(
+                shared_secret.try_into().expect("shape to be good"),
+                encrypted_session_key,
+                encrypted_key_len,
+                &(curve.oid(), *alg_sym, *hash),
+                &self.public_key.fingerprint(),
+            )?;
+
+            // strip off the leading session key algorithm octet, and the two trailing checksum octets
+            let dec_len = decrypted_key.len();
+            let (sessionkey, checksum) = (
+                &decrypted_key[1..dec_len - 2],
+                &decrypted_key[dec_len - 2..],
+            );
+
+            // ... check the checksum, while we have it at hand
+            pgp::crypto::checksum::simple(checksum, sessionkey)?;
+
+            let session_key_algorithm = decrypted_key[0].into();
+            Ok((sessionkey.to_vec(), session_key_algorithm))
+        } else {
+            unimplemented!();
         }
     }
 }
@@ -141,15 +272,14 @@ impl SecretKeyTrait for WrappedKey {
 
     type Unlocked = Self;
 
-    fn unlock<F, G, T>(&self, _pw: F, _work: G) -> pgp::errors::Result<T>
+    fn unlock<F, G, T>(&self, _pw: F, work: G) -> pgp::errors::Result<T>
     where
         F: FnOnce() -> String,
         G: FnOnce(&Self::Unlocked) -> pgp::errors::Result<T>,
     {
-        unimplemented!("key unlock is implemented in the ssh agent")
+        work(self)
     }
 
-    #[allow(clippy::await_holding_refcell_ref)]
     fn create_signature<F>(
         &self,
         _key_pw: F,
@@ -163,7 +293,7 @@ impl SecretKeyTrait for WrappedKey {
             .expect("creating runtime to succeed")
             .handle()
             .block_on(async {
-                let mut client = self.client.try_borrow_mut().expect("not to be shared");
+                let mut client = self.client.lock().await;
                 let result = client.sign(SignRequest {
                     pubkey: self.pubkey.clone(),
                     data: data.to_vec(),
@@ -196,6 +326,7 @@ impl SecretKeyTrait for WrappedKey {
 enum Args {
     Generate { userid: String },
     Sign,
+    Decrypt,
 }
 
 fn main() -> testresult::TestResult {
@@ -203,7 +334,7 @@ fn main() -> testresult::TestResult {
 
     let rt = Runtime::new()?;
 
-    let (client, identities) = rt.block_on(async move {
+    let (client, identities, decrypt_ids) = rt.block_on(async move {
         #[cfg(unix)]
         let mut client =
             connect(Binding::FilePath(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?)?;
@@ -218,15 +349,46 @@ fn main() -> testresult::TestResult {
             panic!("We need at least one ed25519 identity!");
         }
 
-        Ok::<_, testresult::TestError>((client, identities))
+        let decrypt_ids = if let Ok(Some(identities)) = client
+            .extension(Extension::new_message(RequestDecryptIdentities)?)
+            .await
+        {
+            identities
+                .parse_message::<DecryptIdentities>()?
+                .map(|d| d.identities)
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+        Ok::<_, testresult::TestError>((client, identities, decrypt_ids))
     })?;
 
     let pubkey = &identities[0].pubkey;
 
-    let signer = WrappedKey::new(pubkey.clone(), client);
-
     match args {
         Args::Generate { userid } => {
+            let subkeys = if let Some(decryption_id) = decrypt_ids.first() {
+                let mut keyflags = KeyFlags::default();
+                keyflags.set_encrypt_comms(true);
+                keyflags.set_encrypt_storage(true);
+                let pk = ssh_to_pgp(decryption_id.pubkey.clone(), KeyRole::Decryption);
+                vec![pgp::PublicSubkey::new(
+                    pgp::packet::PublicSubkey::new(
+                        pk.packet_version(),
+                        pk.version(),
+                        pk.algorithm(),
+                        *pk.created_at(),
+                        pk.expiration(),
+                        pk.public_params().clone(),
+                    )?,
+                    keyflags,
+                )]
+            } else {
+                vec![]
+            };
+
+            let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
             let mut keyflags = KeyFlags::default();
             keyflags.set_sign(true);
             keyflags.set_certify(true);
@@ -240,15 +402,16 @@ fn main() -> testresult::TestResult {
                     keyflags,
                     Default::default(),
                     Default::default(),
-                    Default::default(),
+                    vec![CompressionAlgorithm::Uncompressed].into(),
                     None,
                 ),
-                vec![],
+                subkeys,
             );
             let signed_pk = composed_pk.sign(&signer, String::new)?;
             signed_pk.to_writer(&mut std::io::stdout())?;
         }
         Args::Sign => {
+            let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
             let signature = SignatureConfig::new_v4(
                 SignatureVersion::V4,
                 SignatureType::Binary,
@@ -280,6 +443,37 @@ fn main() -> testresult::TestResult {
 
             let signature = Signature::from_config(signature, signed_hash_value, raw_sig);
             pgp::packet::write_packet(&mut std::io::stdout(), &signature)?;
+        }
+        Args::Decrypt => {
+            let decryptor =
+                WrappedKey::new(decrypt_ids[0].pubkey.clone(), client, KeyRole::Decryption);
+            let message = Message::from_bytes(std::io::stdin())?;
+
+            let Message::Encrypted { esk, edata } = message else {
+                panic!("not encrypted");
+            };
+
+            let mpis = if let Esk::PublicKeyEncryptedSessionKey(ref k) = esk[0] {
+                k.mpis()
+            } else {
+                panic!("whoops")
+            };
+
+            let (session_key, session_key_algorithm) =
+                decryptor.unlock(String::new, |priv_key| priv_key.decrypt(mpis))?;
+
+            let plain_session_key = PlainSessionKey::V4 {
+                key: session_key,
+                sym_alg: session_key_algorithm,
+            };
+
+            let decrypted = edata.decrypt(plain_session_key)?;
+
+            if let Message::Literal(data) = decrypted {
+                std::io::stdout().write_all(data.data())?;
+            } else {
+                eprintln!("decrypted: {:?}", &decrypted);
+            }
         }
     }
 
