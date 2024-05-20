@@ -32,6 +32,7 @@ thiserror = "1.0.58"
 #uuid = { version = "1.8.0", features = ["v4"] }
 subtle = { version = "2", default-features = false }
 signature = { version = "2.2.0", features = ["alloc"] }
+secrecy = "0.8.0"
 
 [features]
 default = ["agent"]
