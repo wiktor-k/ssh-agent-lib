@@ -3,11 +3,16 @@
 [![CI](https://github.com/wiktor-k/ssh-agent-lib/actions/workflows/rust.yml/badge.svg)](https://github.com/wiktor-k/ssh-agent-lib/actions/workflows/rust.yml)
 [![Crates.io](https://img.shields.io/crates/v/ssh-agent-lib)](https://crates.io/crates/ssh-agent-lib)
 
-A collection of types for writing custom SSH agents as specified by the [SSH Agent Protocol Internet Draft](https://datatracker.ietf.org/doc/html/draft-miller-ssh-agent).
+A collection of types for writing custom SSH agents and connecting to existing ones.
 
-This makes it possible to utilize remote keys not supported by the default OpenSSH agent.
+The types in this crate closely follow the [SSH Agent Protocol Internet Draft](https://datatracker.ietf.org/doc/html/draft-miller-ssh-agent) specification and can be used to utilize remote keys not supported by the default OpenSSH agent.
 
-## Example
+## Examples
+
+The following examples show a sample agent and a sample client.
+For more elaborate example see the `examples` directory or [crates using `ssh-agent-lib`](https://crates.io/crates/ssh-agent-lib/reverse_dependencies).
+
+### Agent
 
 The following example starts listening on a socket and processing requests.
 On Unix it uses `ssh-agent.sock` Unix domain socket while on Windows it uses a named pipe `\\.\pipe\agent`.
@@ -67,7 +72,32 @@ On Windows the path of the pipe has to be used:
 SSH_AUTH_SOCK=\\.\pipe\agent ssh user@example.com
 ```
 
-For more elaborate example see the `examples` directory or [crates using `ssh-agent-lib`](https://crates.io/crates/ssh-agent-lib/reverse_dependencies).
+### Client
+
+The following example connects to the agent pointed to by the `SSH_AUTH_SOCK` environment variable and prints identities (public keys) that the agent knows of:
+
+```rust,no_run
+use service_binding::Binding;
+use ssh_agent_lib::client::connect;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(unix)]
+    let mut client =
+        connect(Binding::FilePath(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?)?;
+
+    #[cfg(windows)]
+    let mut client =
+        connect(Binding::NamedPipe(std::env::var("SSH_AUTH_SOCK")?.into()).try_into()?)?;
+
+    eprintln!(
+        "Identities that this agent knows of: {:#?}",
+        client.request_identities().await?
+    );
+
+    Ok(())
+}
+```
 
 ## License
 
