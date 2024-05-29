@@ -1,6 +1,6 @@
 rem del /F /Q Cargo.toml.sig id_rsa id_rsa.pub agent.pub
 
-cmd /c "START /b cargo run --example key_storage"
+cmd /c "START /b cargo run --example key-storage"
 
 @echo off
 :waitloop

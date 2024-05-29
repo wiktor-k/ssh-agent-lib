@@ -32,7 +32,7 @@ jobs:
       # If the example doesn't compile the integration test will
       # be stuck. Check for compilation issues earlier to abort the job
       - name: Check if the example compiles
-        run: cargo check --example key_storage
+        run: cargo check --example key-storage
       - name: Run integration tests
         run: ./tests/sign-and-verify.sh
         if: ${{ ! matrix.windows }}
