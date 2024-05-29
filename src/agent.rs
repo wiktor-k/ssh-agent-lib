@@ -5,6 +5,7 @@ use std::io;
 
 use async_trait::async_trait;
 use futures::{SinkExt, TryStreamExt};
+pub use service_binding;
 use ssh_key::Signature;
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(windows)]
