@@ -261,6 +261,31 @@ where
 
 /// Listen for connections on a given socket and use session factory
 /// to create new session for each accepted socket.
+///
+/// # Examples
+///
+/// The following example starts listening for connections and
+/// processes them with the `MyAgent` struct.
+///
+/// ```no_run
+/// # async fn main_() -> testresult::TestResult {
+/// use ssh_agent_lib::agent::{listen, Session};
+/// use tokio::net::TcpListener;
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {
+///     // implement your agent logic here
+/// }
+///
+/// listen(
+///     TcpListener::bind("127.0.0.1:8080").await?,
+///     MyAgent::default(),
+/// )
+/// .await?;
+/// # Ok(()) }
+/// ```
 pub async fn listen<S>(mut socket: S, mut sf: impl Agent<S>) -> Result<(), AgentError>
 where
     S: ListeningSocket + fmt::Debug + Send,
