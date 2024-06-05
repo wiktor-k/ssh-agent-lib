@@ -75,7 +75,7 @@ where
     fn encode(&mut self, item: Output, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let mut bytes = Vec::new();
 
-        let len = item.encoded_len().unwrap() as u32;
+        let len = item.encoded_len().map_err(ProtoError::SshEncoding)? as u32;
         len.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
 
         item.encode(&mut bytes).map_err(ProtoError::SshEncoding)?;
