@@ -2,6 +2,7 @@
 #![deny(missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![deny(missing_docs)]
+#![deny(clippy::unwrap_used)]
 
 pub mod proto;
 
