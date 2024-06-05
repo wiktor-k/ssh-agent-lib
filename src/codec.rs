@@ -1,4 +1,4 @@
-//! SSH agent protocol framing codec
+//! SSH agent protocol framing codec.
 
 use std::marker::PhantomData;
 use std::mem::size_of;
