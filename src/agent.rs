@@ -251,6 +251,37 @@ where
 }
 
 /// Factory of sessions for the given type of sockets.
+///
+/// An agent implementation is automatically created for types which
+/// implement [`Session`] and [`Clone`]: new sessions are created by
+/// cloning the agent object. This is usually sufficient for the
+/// majority of use cases. In case the information about the
+/// underlying socket (connection source) is needed the [`Agent`] can
+/// be implemented manually.
+///
+/// # Examples
+///
+/// This example shows how to retrieve the connecting process ID on Unix:
+///
+/// ```
+/// use ssh_agent_lib::agent::{Agent, Session};
+///
+/// #[derive(Debug, Default)]
+/// struct AgentSocketInfo;
+///
+/// #[cfg(unix)]
+/// impl Agent<tokio::net::UnixListener> for AgentSocketInfo {
+///     fn new_session(&mut self, socket: &tokio::net::UnixStream) -> impl Session {
+///         let _socket_info = format!(
+///             "unix: addr: {:?} cred: {:?}",
+///             socket.peer_addr().unwrap(),
+///             socket.peer_cred().unwrap()
+///         );
+///         Self
+///     }
+/// }
+/// # impl Session for AgentSocketInfo { }
+/// ```
 pub trait Agent<S>: 'static + Send + Sync
 where
     S: ListeningSocket + fmt::Debug + Send,
