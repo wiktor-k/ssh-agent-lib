@@ -15,3 +15,8 @@ pub mod error;
 
 #[cfg(feature = "agent")]
 pub use async_trait::async_trait;
+//
+// re-export dependencies that are used in the public API of our crate
+pub use secrecy;
+pub use ssh_encoding;
+pub use ssh_key;
