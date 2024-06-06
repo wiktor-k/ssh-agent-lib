@@ -19,9 +19,10 @@ use std::{sync::Arc, time::Duration};
 use card_backend_pcsc::PcscBackend;
 use clap::Parser;
 use openpgp_card::{
-    algorithm::AlgorithmAttributes,
-    crypto_data::{Cryptogram, EccType, PublicKeyMaterial},
-    Card, KeyType,
+    ocard::algorithm::AlgorithmAttributes,
+    ocard::crypto::{Cryptogram, EccType, PublicKeyMaterial},
+    ocard::KeyType,
+    ocard::OpenPGP,
 };
 use retainer::{Cache, CacheExpiration};
 use secrecy::{ExposeSecret, SecretString};
@@ -63,7 +64,7 @@ impl CardSession {
     ) -> Result<ssh_key::Signature, Box<dyn std::error::Error + Send + Sync>> {
         let cards = PcscBackend::cards(None).map_err(AgentError::other)?;
         for card in cards {
-            let mut card = Card::new(card?)?;
+            let mut card = OpenPGP::new(card?)?;
             let mut tx = card.transaction()?;
             let ident = tx.application_identifier()?.ident();
             if let PublicKeyMaterial::E(e) = tx.public_key(KeyType::Authentication)? {
@@ -73,7 +74,8 @@ impl CardSession {
                         if pubkey == request.pubkey {
                             let pin = self.pwds.get(&ident).await;
                             return if let Some(pin) = pin {
-                                tx.verify_pw1_user(pin.expose_secret().as_bytes())?;
+                                let str = pin.expose_secret().as_bytes().to_vec();
+                                tx.verify_pw1_user(str.into())?;
                                 let signature = tx.internal_authenticate(request.data.clone())?;
 
                                 Ok(Signature::new(Algorithm::Ed25519, signature)?)
@@ -98,11 +100,13 @@ impl CardSession {
             Ok(cards) => {
                 let card_pin_matches = cards
                     .flat_map(|card| {
-                        let mut card = Card::new(card?)?;
+                        let mut card = OpenPGP::new(card?)?;
                         let mut tx = card.transaction()?;
                         let ident = tx.application_identifier()?.ident();
                         if ident == key.id {
-                            tx.verify_pw1_user(key.pin.expose_secret().as_bytes())?;
+                            let str = key.pin.expose_secret().as_bytes().to_vec();
+                            tx.verify_pw1_user(str.into())?;
+
                             Ok::<_, Box<dyn std::error::Error>>(true)
                         } else {
                             Ok(false)
@@ -128,7 +132,7 @@ impl CardSession {
     ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error + Send + Sync>> {
         if let Ok(cards) = PcscBackend::cards(None) {
             for card in cards {
-                let mut card = Card::new(card?)?;
+                let mut card = OpenPGP::new(card?)?;
                 let mut tx = card.transaction()?;
                 if let PublicKeyMaterial::E(e) = tx.public_key(KeyType::Decryption)? {
                     if let AlgorithmAttributes::Ecc(ecc) = e.algo() {
@@ -138,7 +142,8 @@ impl CardSession {
                                 let ident = tx.application_identifier()?.ident();
                                 let pin = self.pwds.get(&ident).await;
                                 if let Some(pin) = pin {
-                                    tx.verify_pw1_user(pin.expose_secret().as_bytes())?;
+                                    let str = pin.expose_secret().as_bytes().to_vec();
+                                    tx.verify_pw1_user(str.into())?;
 
                                     let data = tx.decipher(Cryptogram::ECDH(&req.data))?;
                                     return Ok(Some(data));
@@ -159,7 +164,7 @@ impl Session for CardSession {
         Ok(if let Ok(cards) = PcscBackend::cards(None) {
             cards
                 .flat_map(|card| {
-                    let mut card = Card::new(card?)?;
+                    let mut card = OpenPGP::new(card?)?;
                     let mut tx = card.transaction()?;
                     let ident = tx.application_identifier()?.ident();
                     if let PublicKeyMaterial::E(e) = tx.public_key(KeyType::Authentication)? {
@@ -217,7 +222,7 @@ impl Session for CardSession {
             let identities = if let Ok(cards) = PcscBackend::cards(None) {
                 cards
                     .flat_map(|card| {
-                        let mut card = Card::new(card?)?;
+                        let mut card = OpenPGP::new(card?)?;
                         let mut tx = card.transaction()?;
                         let ident = tx.application_identifier()?.ident();
                         if let PublicKeyMaterial::E(e) = tx.public_key(KeyType::Decryption)? {
