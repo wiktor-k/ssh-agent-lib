@@ -72,6 +72,7 @@ check-commits REFS='main..':
 # Fixes common issues. Files need to be git add'ed
 fix:
     #!/usr/bin/env bash
+    set -euo pipefail
     if ! git diff-files --quiet ; then
         echo "Working tree has changes. Please stage them: git add ."
         exit 1
