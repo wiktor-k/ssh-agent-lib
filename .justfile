@@ -5,8 +5,9 @@ set dotenv-load := true
 
 # Since this is a first recipe it's being run by default.
 # Faster checks need to be executed first for better UX.  For example
-
 # codespell is very fast. cargo fmt does not need to download crates etc.
+
+# Perform all checks
 check: spelling formatting docs lints dependencies tests
 
 # Checks common spelling mistakes
