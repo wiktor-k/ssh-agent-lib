@@ -78,6 +78,9 @@ fix:
 
     codespell --write-changes
     just --unstable --fmt
+    # try to fix rustc issues
+    cargo fix --allow-staged
+    # try to fix clippy issues
     cargo clippy --fix --allow-staged
 
     # fmt must be last as clippy's changes may break formatting
