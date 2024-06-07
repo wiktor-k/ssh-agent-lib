@@ -8,6 +8,7 @@ pub mod proto;
 
 #[cfg(feature = "agent")]
 pub mod agent;
+pub mod blocking;
 #[cfg(feature = "agent")]
 pub mod client;
 #[cfg(feature = "codec")]
