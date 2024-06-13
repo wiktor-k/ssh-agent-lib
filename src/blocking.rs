@@ -20,6 +20,7 @@
 //!     client.request_identities()?
 //! );
 //! # Ok(()) }
+//! # #[cfg(windows)] fn main() { }
 //! ```
 
 use std::io::{Read, Write};
