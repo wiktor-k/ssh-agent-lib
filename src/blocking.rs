@@ -1,4 +1,26 @@
-//! Blocking API.
+//! Blocking SSH agent client API.
+//!
+//! Blocking API is always enabled since it doesn't use additional
+//! dependencies over what is in the `proto` module and Rust standard
+//! library.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! # #[cfg(unix)]
+//! # fn main() -> testresult::TestResult {
+//! use std::os::unix::net::UnixStream;
+//!
+//! use ssh_agent_lib::blocking::Client;
+//!
+//! let mut client = Client::new(UnixStream::connect(std::env::var("SSH_AUTH_SOCK")?)?);
+//!
+//! eprintln!(
+//!     "Identities that this agent knows of: {:#?}",
+//!     client.request_identities()?
+//! );
+//! # Ok(()) }
+//! ```
 
 use std::io::{Read, Write};
 
@@ -21,7 +43,7 @@ pub struct Client<S: Read + Write> {
 }
 
 impl<S: Read + Write> Client<S> {
-    /// Construct a new SSH agent client for a given transport stream.
+    /// Construct a new SSH agent client for the given transport stream.
     pub fn new(stream: S) -> Self {
         Self { stream }
     }
