@@ -5,8 +5,9 @@ set dotenv-load := true
 
 # Since this is a first recipe it's being run by default.
 # Faster checks need to be executed first for better UX.  For example
-
 # codespell is very fast. cargo fmt does not need to download crates etc.
+
+# Perform all checks
 check: spelling formatting docs lints dependencies tests
 
 # Checks common spelling mistakes
@@ -71,6 +72,7 @@ check-commits REFS='main..':
 # Fixes common issues. Files need to be git add'ed
 fix:
     #!/usr/bin/env bash
+    set -euo pipefail
     if ! git diff-files --quiet ; then
         echo "Working tree has changes. Please stage them: git add ."
         exit 1
@@ -78,6 +80,9 @@ fix:
 
     codespell --write-changes
     just --unstable --fmt
+    # try to fix rustc issues
+    cargo fix --allow-staged
+    # try to fix clippy issues
     cargo clippy --fix --allow-staged
 
     # fmt must be last as clippy's changes may break formatting

@@ -20,10 +20,13 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
         include:
         - os: windows-latest
-          windows: true
+          script: ".\\tests\\sign-and-verify-win.bat"
+        - os: ubuntu-latest
+          script: ./tests/sign-and-verify.sh
+        - os: macos-latest
+          script: ./tests/sign-and-verify.sh
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +37,4 @@ jobs:
       - name: Check if the example compiles
         run: cargo check --example key-storage
       - name: Run integration tests
-        run: ./tests/sign-and-verify.sh
-        if: ${{ ! matrix.windows }}
-      - name: Run integration tests
-        run: ".\\tests\\sign-and-verify-win.bat"
-        if: ${{ matrix.windows }}
+        run: ${{ matrix.script }}
