@@ -52,9 +52,9 @@ const-str = "0.5.7"
 rstest = "0.21.0"
 openpgp-card = "0.5.0"
 card-backend-pcsc = "0.5.0"
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.7", features = ["derive"] }
 secrecy = "0.8.0"
 retainer = "0.3.0"
-pgp = "0.12.0-alpha.3"
+pgp = "0.13.0"
 chrono = "0.4.38"
 interprocess = "2.2.0"
