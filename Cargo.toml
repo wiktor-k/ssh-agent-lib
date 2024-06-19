@@ -19,20 +19,19 @@ exclude = [".github"]
 members = [".", "fuzz"]
 
 [dependencies]
-byteorder = "1.5.0"
-async-trait = { version = "0.1.80", optional = true }
-futures = { version = "0.3.30", optional = true }
-log = { version = "0.4.21", optional = true }
+byteorder = "1"
+async-trait = { version = "0.1", optional = true }
+futures = { version = "0.3", optional = true }
+log = { version = "0.4", optional = true }
 tokio = { version = "1", optional = true, features = ["rt", "net", "time"] }
-tokio-util = { version = "0.7.11", optional = true, features = ["codec"] }
-service-binding = { version = "^3.0" }
-ssh-encoding = { version = "0.2.0" }
-ssh-key = { version = "0.6.6", features = ["crypto", "alloc"] }
-thiserror = "1.0.61"
-#uuid = { version = "1.8.0", features = ["v4"] }
+tokio-util = { version = "0.7", optional = true, features = ["codec"] }
+service-binding = { version = "^3" }
+ssh-encoding = { version = "0.2" }
+ssh-key = { version = "0.6", features = ["crypto", "alloc"] }
+thiserror = "1"
 subtle = { version = "2", default-features = false }
-signature = { version = "2.2.0", features = ["alloc"] }
-secrecy = "0.8.0"
+signature = { version = "2", features = ["alloc"] }
+secrecy = "0.8"
 
 [features]
 default = ["agent"]
@@ -58,3 +57,4 @@ secrecy = "0.8.0"
 retainer = "0.3.0"
 pgp = "0.12.0-alpha.3"
 chrono = "0.4.38"
+interprocess = "2.2.0"

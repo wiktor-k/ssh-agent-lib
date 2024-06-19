@@ -43,3 +43,7 @@ A simple forwarding example which works as an agent and client at the same time 
 
 Dumps identities stored by the agent.
 Additionally invokes an extension and reads the result.
+
+### `ssh-agent-client-blocking`
+
+Dumps identities stored by the agent using blocking (synchronous) API.

@@ -24,3 +24,10 @@ ssh-keygen -Y check-novalidate -n file -f agent.pub -s Cargo.toml.sig < Cargo.to
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 rem del /F /Q Cargo.toml.sig id_rsa id_rsa.pub agent.pub
+
+rem run the examples
+cargo run --example ssh-agent-client
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+cargo run --example ssh-agent-client-blocking
+if %errorlevel% neq 0 exit /b %errorlevel%

@@ -34,7 +34,11 @@ jobs:
       - run: just install-packages
       # If the example doesn't compile the integration test will
       # be stuck. Check for compilation issues earlier to abort the job
-      - name: Check if the example compiles
+      - name: Check if the key-storage example compiles
         run: cargo check --example key-storage
+      - name: Check if the ssh-agent-client example compiles
+        run: cargo check --example ssh-agent-client
+      - name: Check if the ssh-agent-client-blocking example compiles
+        run: cargo check --example ssh-agent-client-blocking
       - name: Run integration tests
         run: ${{ matrix.script }}

@@ -47,6 +47,10 @@ else
   # does not support RestrictDestination constraint (macos)
   ssh-add -t 2 id_rsa
 fi
-  
+
 # clean up the only leftover
 rm -rf id_rsa id_rsa.pub id_rsa-cert.pub ca_user_key ca_user_key.pub
+
+# run the examples
+cargo run --example ssh-agent-client
+cargo run --example ssh-agent-client-blocking
