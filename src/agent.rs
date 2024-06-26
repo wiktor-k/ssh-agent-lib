@@ -34,6 +34,39 @@ use crate::proto::SignRequest;
 use crate::proto::SmartcardKey;
 
 /// Type representing a socket that asynchronously returns a list of streams.
+///
+/// This trait is implemented for [TCP sockets](TcpListener) on all
+/// platforms, Unix sockets on Unix platforms (e.g. Linux, macOS) and
+/// Named Pipes on Windows.
+///
+/// Objects implementing this trait are passed to the [`listen`]
+/// function.
+///
+/// # Examples
+///
+/// The following example starts listening for connections and
+/// processes them with the `MyAgent` struct.
+///
+/// ```no_run
+/// # async fn main_() -> testresult::TestResult {
+/// use ssh_agent_lib::agent::{listen, Session};
+/// use tokio::net::TcpListener;
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {
+///     // implement your agent logic here
+/// }
+///
+/// listen(
+///     TcpListener::bind("127.0.0.1:8080").await?,
+///     MyAgent::default(),
+/// )
+/// .await?;
+/// # Ok(()) }
+/// ```
+
 #[async_trait]
 pub trait ListeningSocket {
     /// Stream type that represents an accepted socket.
