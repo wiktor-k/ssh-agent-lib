@@ -416,6 +416,39 @@ where
 }
 
 /// Bind to a service binding listener.
+///
+/// # Examples
+///
+/// The following example uses `clap` to parse the host socket data
+/// thus allowing the user to choose at runtime whether they want to
+/// use TCP sockets, Unix domain sockets (including systemd socket
+/// activation) or Named Pipes (under Windows).
+///
+/// ```no_run
+/// use clap::Parser;
+/// use service_binding::Binding;
+/// use ssh_agent_lib::agent::{bind, Session};
+///
+/// #[derive(Debug, Parser)]
+/// struct Args {
+///     #[clap(long, short = 'H', default_value = "unix:///tmp/ssh.sock")]
+///     host: Binding,
+/// }
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {}
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let args = Args::parse();
+///
+///     bind(args.host.try_into()?, MyAgent::default()).await?;
+///
+///     Ok(())
+/// }
+/// ```
 #[cfg(unix)]
 pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
 where
@@ -436,6 +469,39 @@ where
 }
 
 /// Bind to a service binding listener.
+///
+/// # Examples
+///
+/// The following example uses `clap` to parse the host socket data
+/// thus allowing the user to choose at runtime whether they want to
+/// use TCP sockets, Unix domain sockets (including systemd socket
+/// activation) or Named Pipes (under Windows).
+///
+/// ```no_run
+/// use clap::Parser;
+/// use service_binding::Binding;
+/// use ssh_agent_lib::agent::{bind, Session};
+///
+/// #[derive(Debug, Parser)]
+/// struct Args {
+///     #[clap(long, short = 'H', default_value = "unix:///tmp/ssh.sock")]
+///     host: Binding,
+/// }
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {}
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let args = Args::parse();
+///
+///     bind(args.host.try_into()?, MyAgent::default()).await?;
+///
+///     Ok(())
+/// }
+/// ```
 #[cfg(windows)]
 pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
 where
