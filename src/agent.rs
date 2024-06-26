@@ -1,4 +1,9 @@
 //! Traits for implementing custom SSH agents.
+//!
+//! Agents which store no state or their state is minimal should
+//! implement the [`Session`] trait. If a more elaborate state is
+//! needed, especially one which depends on the socket making the
+//! connection then it is advisable to implement the [`Agent`] trait.
 
 use std::fmt;
 use std::io;
