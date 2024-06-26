@@ -91,6 +91,43 @@ impl ListeningSocket for NamedPipeListener {
 ///
 /// This type is implemented by agents that want to handle incoming SSH agent
 /// connections.
+///
+/// # Examples
+///
+/// The following examples shows the most minimal [`Session`]
+/// implementation: one that returns a list of public keys that it
+/// manages and signs all incoming signing requests.
+///
+/// Note that the `MyAgent` struct is cloned for all new sessions
+/// (incoming connections). If the cloning needs special behavior
+/// implementing [`Clone`] manually is a viable approach. If the newly
+/// created sessions require information from the underlying socket it
+/// is advisable to implement the [`Agent`] trait.
+///
+/// ```
+/// use ssh_agent_lib::{agent::Session, error::AgentError};
+/// use ssh_agent_lib::proto::{Identity, SignRequest};
+/// use ssh_key::{Algorithm, Signature};
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// #[ssh_agent_lib::async_trait]
+/// impl Session for MyAgent {
+///     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
+///         Ok(vec![ /* public keys that this agent knows of */ ])
+///     }
+///
+///     async fn sign(&mut self, request: SignRequest) -> Result<Signature, AgentError> {
+///         // get the signature by signing `request.data`
+///         let signature = vec![];
+///         Ok(Signature::new(
+///              Algorithm::new("algorithm").map_err(AgentError::other)?,
+///              signature,
+///         ).map_err(AgentError::other)?)
+///     }
+/// }
+/// ```
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Unpin {
     /// Request a list of keys managed by this session.
