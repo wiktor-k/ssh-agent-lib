@@ -359,7 +359,7 @@ where
 /// .await?;
 /// # Ok(()) }
 /// ```
-pub async fn listen<S>(mut socket: S, mut sf: impl Agent<S>) -> Result<(), AgentError>
+pub async fn listen<S>(mut socket: S, mut agent: impl Agent<S>) -> Result<(), AgentError>
 where
     S: ListeningSocket + fmt::Debug + Send,
 {
@@ -367,7 +367,7 @@ where
     loop {
         match socket.accept().await {
             Ok(socket) => {
-                let session = sf.new_session(&socket);
+                let session = agent.new_session(&socket);
                 tokio::spawn(async move {
                     let adapter = Framed::new(socket, Codec::<Request, Response>::default());
                     if let Err(e) = handle_socket::<S>(session, adapter).await {
@@ -417,17 +417,17 @@ where
 
 /// Bind to a service binding listener.
 #[cfg(unix)]
-pub async fn bind<SF>(listener: service_binding::Listener, sf: SF) -> Result<(), AgentError>
+pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
 where
-    SF: Agent<tokio::net::UnixListener> + Agent<tokio::net::TcpListener>,
+    A: Agent<tokio::net::UnixListener> + Agent<tokio::net::TcpListener>,
 {
     match listener {
         #[cfg(unix)]
         service_binding::Listener::Unix(listener) => {
-            listen(UnixListener::from_std(listener)?, sf).await
+            listen(UnixListener::from_std(listener)?, agent).await
         }
         service_binding::Listener::Tcp(listener) => {
-            listen(TcpListener::from_std(listener)?, sf).await
+            listen(TcpListener::from_std(listener)?, agent).await
         }
         _ => Err(AgentError::IO(std::io::Error::other(
             "Unsupported type of a listener.",
@@ -437,16 +437,16 @@ where
 
 /// Bind to a service binding listener.
 #[cfg(windows)]
-pub async fn bind<SF>(listener: service_binding::Listener, sf: SF) -> Result<(), AgentError>
+pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
 where
-    SF: Agent<NamedPipeListener> + Agent<tokio::net::TcpListener>,
+    A: Agent<NamedPipeListener> + Agent<tokio::net::TcpListener>,
 {
     match listener {
         service_binding::Listener::Tcp(listener) => {
-            listen(TcpListener::from_std(listener)?, sf).await
+            listen(TcpListener::from_std(listener)?, agent).await
         }
         service_binding::Listener::NamedPipe(pipe) => {
-            listen(NamedPipeListener::bind(pipe)?, sf).await
+            listen(NamedPipeListener::bind(pipe)?, agent).await
         }
     }
 }
