@@ -448,58 +448,11 @@ where
     }
 }
 
-/// Bind to a service binding listener.
-///
-/// # Examples
-///
-/// The following example uses `clap` to parse the host socket data
-/// thus allowing the user to choose at runtime whether they want to
-/// use TCP sockets, Unix domain sockets (including systemd socket
-/// activation) or Named Pipes (under Windows).
-///
-/// ```no_run
-/// use clap::Parser;
-/// use service_binding::Binding;
-/// use ssh_agent_lib::agent::{bind, Session};
-///
-/// #[derive(Debug, Parser)]
-/// struct Args {
-///     #[clap(long, short = 'H', default_value = "unix:///tmp/ssh.sock")]
-///     host: Binding,
-/// }
-///
-/// #[derive(Default, Clone)]
-/// struct MyAgent;
-///
-/// impl Session for MyAgent {}
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let args = Args::parse();
-///
-///     bind(args.host.try_into()?, MyAgent::default()).await?;
-///
-///     Ok(())
-/// }
-/// ```
 #[cfg(unix)]
-pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
-where
-    A: Agent<tokio::net::UnixListener> + Agent<tokio::net::TcpListener>,
-{
-    match listener {
-        #[cfg(unix)]
-        service_binding::Listener::Unix(listener) => {
-            listen(UnixListener::from_std(listener)?, agent).await
-        }
-        service_binding::Listener::Tcp(listener) => {
-            listen(TcpListener::from_std(listener)?, agent).await
-        }
-        _ => Err(AgentError::IO(std::io::Error::other(
-            "Unsupported type of a listener.",
-        ))),
-    }
-}
+type PlatformSpecificListener = tokio::net::UnixListener;
+
+#[cfg(windows)]
+type PlatformSpecificListener = NamedPipeListener;
 
 /// Bind to a service binding listener.
 ///
@@ -535,17 +488,25 @@ where
 ///     Ok(())
 /// }
 /// ```
-#[cfg(windows)]
 pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
 where
-    A: Agent<NamedPipeListener> + Agent<tokio::net::TcpListener>,
+    A: Agent<PlatformSpecificListener> + Agent<tokio::net::TcpListener>,
 {
     match listener {
+        #[cfg(unix)]
+        service_binding::Listener::Unix(listener) => {
+            listen(UnixListener::from_std(listener)?, agent).await
+        }
         service_binding::Listener::Tcp(listener) => {
             listen(TcpListener::from_std(listener)?, agent).await
         }
+        #[cfg(windows)]
         service_binding::Listener::NamedPipe(pipe) => {
             listen(NamedPipeListener::bind(pipe)?, agent).await
         }
+        #[allow(unreachable_patterns)]
+        _ => Err(AgentError::IO(std::io::Error::other(
+            "Unsupported type of a listener.",
+        ))),
     }
 }
