@@ -1,4 +1,9 @@
-//! Traits for implementing custom SSH agents
+//! Traits for implementing custom SSH agents.
+//!
+//! Agents which store no state or their state is minimal should
+//! implement the [`Session`] trait. If a more elaborate state is
+//! needed, especially one which depends on the socket making the
+//! connection then it is advisable to implement the [`Agent`] trait.
 
 use std::fmt;
 use std::io;
@@ -29,6 +34,39 @@ use crate::proto::SignRequest;
 use crate::proto::SmartcardKey;
 
 /// Type representing a socket that asynchronously returns a list of streams.
+///
+/// This trait is implemented for [TCP sockets](TcpListener) on all
+/// platforms, Unix sockets on Unix platforms (e.g. Linux, macOS) and
+/// Named Pipes on Windows.
+///
+/// Objects implementing this trait are passed to the [`listen`]
+/// function.
+///
+/// # Examples
+///
+/// The following example starts listening for connections and
+/// processes them with the `MyAgent` struct.
+///
+/// ```no_run
+/// # async fn main_() -> testresult::TestResult {
+/// use ssh_agent_lib::agent::{listen, Session};
+/// use tokio::net::TcpListener;
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {
+///     // implement your agent logic here
+/// }
+///
+/// listen(
+///     TcpListener::bind("127.0.0.1:8080").await?,
+///     MyAgent::default(),
+/// )
+/// .await?;
+/// # Ok(()) }
+/// ```
+
 #[async_trait]
 pub trait ListeningSocket {
     /// Stream type that represents an accepted socket.
@@ -91,6 +129,43 @@ impl ListeningSocket for NamedPipeListener {
 ///
 /// This type is implemented by agents that want to handle incoming SSH agent
 /// connections.
+///
+/// # Examples
+///
+/// The following examples shows the most minimal [`Session`]
+/// implementation: one that returns a list of public keys that it
+/// manages and signs all incoming signing requests.
+///
+/// Note that the `MyAgent` struct is cloned for all new sessions
+/// (incoming connections). If the cloning needs special behavior
+/// implementing [`Clone`] manually is a viable approach. If the newly
+/// created sessions require information from the underlying socket it
+/// is advisable to implement the [`Agent`] trait.
+///
+/// ```
+/// use ssh_agent_lib::{agent::Session, error::AgentError};
+/// use ssh_agent_lib::proto::{Identity, SignRequest};
+/// use ssh_key::{Algorithm, Signature};
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// #[ssh_agent_lib::async_trait]
+/// impl Session for MyAgent {
+///     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
+///         Ok(vec![ /* public keys that this agent knows of */ ])
+///     }
+///
+///     async fn sign(&mut self, request: SignRequest) -> Result<Signature, AgentError> {
+///         // get the signature by signing `request.data`
+///         let signature = vec![];
+///         Ok(Signature::new(
+///              Algorithm::new("algorithm").map_err(AgentError::other)?,
+///              signature,
+///         ).map_err(AgentError::other)?)
+///     }
+/// }
+/// ```
 #[async_trait]
 pub trait Session: 'static + Sync + Send + Unpin {
     /// Request a list of keys managed by this session.
@@ -251,6 +326,37 @@ where
 }
 
 /// Factory of sessions for the given type of sockets.
+///
+/// An agent implementation is automatically created for types which
+/// implement [`Session`] and [`Clone`]: new sessions are created by
+/// cloning the agent object. This is usually sufficient for the
+/// majority of use cases. In case the information about the
+/// underlying socket (connection source) is needed the [`Agent`] can
+/// be implemented manually.
+///
+/// # Examples
+///
+/// This example shows how to retrieve the connecting process ID on Unix:
+///
+/// ```
+/// use ssh_agent_lib::agent::{Agent, Session};
+///
+/// #[derive(Debug, Default)]
+/// struct AgentSocketInfo;
+///
+/// #[cfg(unix)]
+/// impl Agent<tokio::net::UnixListener> for AgentSocketInfo {
+///     fn new_session(&mut self, socket: &tokio::net::UnixStream) -> impl Session {
+///         let _socket_info = format!(
+///             "unix: addr: {:?} cred: {:?}",
+///             socket.peer_addr().unwrap(),
+///             socket.peer_cred().unwrap()
+///         );
+///         Self
+///     }
+/// }
+/// # impl Session for AgentSocketInfo { }
+/// ```
 pub trait Agent<S>: 'static + Send + Sync
 where
     S: ListeningSocket + fmt::Debug + Send,
@@ -261,7 +367,32 @@ where
 
 /// Listen for connections on a given socket and use session factory
 /// to create new session for each accepted socket.
-pub async fn listen<S>(mut socket: S, mut sf: impl Agent<S>) -> Result<(), AgentError>
+///
+/// # Examples
+///
+/// The following example starts listening for connections and
+/// processes them with the `MyAgent` struct.
+///
+/// ```no_run
+/// # async fn main_() -> testresult::TestResult {
+/// use ssh_agent_lib::agent::{listen, Session};
+/// use tokio::net::TcpListener;
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {
+///     // implement your agent logic here
+/// }
+///
+/// listen(
+///     TcpListener::bind("127.0.0.1:8080").await?,
+///     MyAgent::default(),
+/// )
+/// .await?;
+/// # Ok(()) }
+/// ```
+pub async fn listen<S>(mut socket: S, mut agent: impl Agent<S>) -> Result<(), AgentError>
 where
     S: ListeningSocket + fmt::Debug + Send,
 {
@@ -269,7 +400,7 @@ where
     loop {
         match socket.accept().await {
             Ok(socket) => {
-                let session = sf.new_session(&socket);
+                let session = agent.new_session(&socket);
                 tokio::spawn(async move {
                     let adapter = Framed::new(socket, Codec::<Request, Response>::default());
                     if let Err(e) = handle_socket::<S>(session, adapter).await {
@@ -317,38 +448,65 @@ where
     }
 }
 
-/// Bind to a service binding listener.
 #[cfg(unix)]
-pub async fn bind<SF>(listener: service_binding::Listener, sf: SF) -> Result<(), AgentError>
+type PlatformSpecificListener = tokio::net::UnixListener;
+
+#[cfg(windows)]
+type PlatformSpecificListener = NamedPipeListener;
+
+/// Bind to a service binding listener.
+///
+/// # Examples
+///
+/// The following example uses `clap` to parse the host socket data
+/// thus allowing the user to choose at runtime whether they want to
+/// use TCP sockets, Unix domain sockets (including systemd socket
+/// activation) or Named Pipes (under Windows).
+///
+/// ```no_run
+/// use clap::Parser;
+/// use service_binding::Binding;
+/// use ssh_agent_lib::agent::{bind, Session};
+///
+/// #[derive(Debug, Parser)]
+/// struct Args {
+///     #[clap(long, short = 'H', default_value = "unix:///tmp/ssh.sock")]
+///     host: Binding,
+/// }
+///
+/// #[derive(Default, Clone)]
+/// struct MyAgent;
+///
+/// impl Session for MyAgent {}
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let args = Args::parse();
+///
+///     bind(args.host.try_into()?, MyAgent::default()).await?;
+///
+///     Ok(())
+/// }
+/// ```
+pub async fn bind<A>(listener: service_binding::Listener, agent: A) -> Result<(), AgentError>
 where
-    SF: Agent<tokio::net::UnixListener> + Agent<tokio::net::TcpListener>,
+    A: Agent<PlatformSpecificListener> + Agent<tokio::net::TcpListener>,
 {
     match listener {
         #[cfg(unix)]
         service_binding::Listener::Unix(listener) => {
-            listen(UnixListener::from_std(listener)?, sf).await
+            listen(UnixListener::from_std(listener)?, agent).await
         }
         service_binding::Listener::Tcp(listener) => {
-            listen(TcpListener::from_std(listener)?, sf).await
+            listen(TcpListener::from_std(listener)?, agent).await
         }
+        #[cfg(windows)]
+        service_binding::Listener::NamedPipe(pipe) => {
+            listen(NamedPipeListener::bind(pipe)?, agent).await
+        }
+        #[allow(unreachable_patterns)]
         _ => Err(AgentError::IO(std::io::Error::other(
             "Unsupported type of a listener.",
         ))),
-    }
-}
-
-/// Bind to a service binding listener.
-#[cfg(windows)]
-pub async fn bind<SF>(listener: service_binding::Listener, sf: SF) -> Result<(), AgentError>
-where
-    SF: Agent<NamedPipeListener> + Agent<tokio::net::TcpListener>,
-{
-    match listener {
-        service_binding::Listener::Tcp(listener) => {
-            listen(TcpListener::from_std(listener)?, sf).await
-        }
-        service_binding::Listener::NamedPipe(pipe) => {
-            listen(NamedPipeListener::bind(pipe)?, sf).await
-        }
     }
 }

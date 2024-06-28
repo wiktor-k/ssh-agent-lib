@@ -1,4 +1,4 @@
-//! SSH agent errors
+//! SSH agent errors.
 
 use std::io;
 
