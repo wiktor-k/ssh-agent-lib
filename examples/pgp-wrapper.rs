@@ -64,7 +64,7 @@ use service_binding::Binding;
 use ssh_agent_lib::{
     agent::Session,
     client::connect,
-    proto::{Extension, SignRequest},
+    proto::{CertKeyData, Extension, SignRequest},
 };
 use ssh_key::public::KeyData;
 use tokio::runtime::Runtime;
@@ -372,7 +372,10 @@ fn main() -> testresult::TestResult {
                 let mut keyflags = KeyFlags::default();
                 keyflags.set_encrypt_comms(true);
                 keyflags.set_encrypt_storage(true);
-                let pk = ssh_to_pgp(decryption_id.pubkey.clone(), KeyRole::Decryption);
+                let CertKeyData::Key(pubkey) = &decryption_id.pubkey else {
+                    panic!("Only pubkeys are supported.");
+                };
+                let pk = ssh_to_pgp(pubkey.clone(), KeyRole::Decryption);
                 vec![pgp::PublicSubkey::new(
                     pgp::packet::PublicSubkey::new(
                         pk.packet_version(),
@@ -388,6 +391,9 @@ fn main() -> testresult::TestResult {
                 vec![]
             };
 
+            let CertKeyData::Key(pubkey) = pubkey else {
+                panic!("Only pubkeys are supported.");
+            };
             let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
             let mut keyflags = KeyFlags::default();
             keyflags.set_sign(true);
@@ -411,6 +417,9 @@ fn main() -> testresult::TestResult {
             signed_pk.to_writer(&mut std::io::stdout())?;
         }
         Args::Sign => {
+            let CertKeyData::Key(pubkey) = pubkey else {
+                panic!("Only pubkeys are supported.");
+            };
             let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
             let signature = SignatureConfig::new_v4(
                 SignatureVersion::V4,
@@ -445,8 +454,10 @@ fn main() -> testresult::TestResult {
             pgp::packet::write_packet(&mut std::io::stdout(), &signature)?;
         }
         Args::Decrypt => {
-            let decryptor =
-                WrappedKey::new(decrypt_ids[0].pubkey.clone(), client, KeyRole::Decryption);
+            let CertKeyData::Key(pubkey) = decrypt_ids[0].pubkey else {
+                panic!("Only pubkeys are supported");
+            };
+            let decryptor = WrappedKey::new(pubkey.clone(), client, KeyRole::Decryption);
             let message = Message::from_bytes(std::io::stdin())?;
 
             let Message::Encrypted { esk, edata } = message else {

@@ -5,7 +5,7 @@ use super::fixtures;
 
 pub fn expected() -> Response {
     Response::IdentitiesAnswer(vec![Identity {
-        pubkey: KeyData::Ecdsa(fixtures::demo_key().into()),
+        pubkey: KeyData::Ecdsa(fixtures::demo_key().into()).into(),
         comment: "baloo@angela".to_string(),
     }])
 }

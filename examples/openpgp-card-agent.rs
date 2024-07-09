@@ -173,7 +173,8 @@ impl Session for CardSession {
                                 return Ok::<_, Box<dyn std::error::Error>>(Some(Identity {
                                     pubkey: KeyData::Ed25519(Ed25519PublicKey(
                                         e.data().try_into()?,
-                                    )),
+                                    ))
+                                    .into(),
                                     comment: ident,
                                 }));
                             }
@@ -231,7 +232,8 @@ impl Session for CardSession {
                                     return Ok::<_, Box<dyn std::error::Error>>(Some(Identity {
                                         pubkey: KeyData::Ed25519(Ed25519PublicKey(
                                             e.data().try_into()?,
-                                        )),
+                                        ))
+                                        .into(),
                                         comment: ident,
                                     }));
                                 }
