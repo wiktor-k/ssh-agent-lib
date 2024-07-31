@@ -26,8 +26,8 @@ log = { version = "0.4", optional = true }
 tokio = { version = "1", optional = true, features = ["rt", "net", "time"] }
 tokio-util = { version = "0.7", optional = true, features = ["codec"] }
 service-binding = { version = "^3" }
-ssh-encoding = { version = "0.3.0-pre.0" }
-ssh-key = { version = "0.7.0-pre.0", features = ["crypto", "alloc"] }
+ssh-encoding = { version = "0.3.0-pre.0", features = ["alloc"] }
+ssh-key = { version = "0.7.0-pre.0", features = ["crypto", "alloc", "rsa"] }
 thiserror = "1"
 subtle = { version = "2", default-features = false }
 signature = { version = "2.3.0-pre.4", features = ["alloc"] }
@@ -43,7 +43,7 @@ env_logger = "0.11.3"
 rand = "0.8.5"
 rsa = { version = "0.10.0-pre.2", features = ["sha2", "sha1"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
-sha1 = { version = "0.10.6", default-features = false, features = ["oid"] }
+sha1 = { version = "0.11.0-pre.4", default-features = false, features = ["oid"] }
 testresult = "0.4.0"
 hex-literal = "0.4.1"
 ssh-key = { version = "0.7.0-pre.0", features = ["p256", "rsa"] }
@@ -57,3 +57,14 @@ secrecy = "0.8.0"
 retainer = "0.3.0"
 chrono = "0.4.38"
 interprocess = "2.2.0"
+
+[patch.crates-io]
+# https://github.com/RustCrypto/SSH/pull/251
+ssh-key = { git = "https://github.com/RustCrypto/SSH.git" }
+# needs a patch of ssh-encoding otherwise the ssh-key patch will pull its own
+# and we will have two Encode/Decode traits.
+ssh-encoding = { git = "https://github.com/RustCrypto/SSH.git" }
+
+# https://github.com/dalek-cryptography/curve25519-dalek/pull/676
+curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek.git", branch = "rustcrypto-new-releases" }
+ed25519-dalek    = { git = "https://github.com/dalek-cryptography/curve25519-dalek.git", branch = "rustcrypto-new-releases" }
