@@ -1,7 +1,7 @@
 //! Agent protocol message structures.
 
 mod add_remove;
-mod cert_key_data;
+mod credential;
 mod extension;
 mod identity;
 mod request;
@@ -10,7 +10,7 @@ mod sign;
 mod unparsed;
 
 pub use self::{
-    add_remove::*, cert_key_data::*, extension::*, identity::*, request::*, response::*, sign::*,
+    add_remove::*, credential::*, extension::*, identity::*, request::*, response::*, sign::*,
     unparsed::*,
 };
 #[doc(hidden)]

@@ -2,7 +2,7 @@
 
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
 
-use super::cert_key_data::CertKeyData;
+use super::PublicCredential;
 use crate::proto::{Error, Result};
 
 /// Signature request with data to be signed with a key in an agent.
@@ -13,7 +13,7 @@ use crate::proto::{Error, Result};
 #[derive(Clone, PartialEq, Debug)]
 pub struct SignRequest {
     /// The public key portion of the [`Identity`](super::Identity) in the agent to sign the data with
-    pub pubkey: CertKeyData,
+    pub pubkey: PublicCredential,
 
     /// Binary data to be signed
     pub data: Vec<u8>,
@@ -27,7 +27,7 @@ impl Decode for SignRequest {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let pubkey = reader.read_prefixed(CertKeyData::decode)?;
+        let pubkey = reader.read_prefixed(PublicCredential::decode)?;
         let data = Vec::decode(reader)?;
         let flags = u32::decode(reader)?;
 

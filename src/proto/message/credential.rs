@@ -5,14 +5,14 @@ use crate::proto::Error;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// Represents a public credential.
-pub enum CertKeyData {
+pub enum PublicCredential {
     /// Plain public key.
     Key(KeyData),
     /// Signed public key.
     Cert(Certificate),
 }
 
-impl CertKeyData {
+impl PublicCredential {
     /// Returns a reference to the [KeyData].
     pub fn key_data(&self) -> &KeyData {
         match self {
@@ -22,7 +22,7 @@ impl CertKeyData {
     }
 }
 
-impl Decode for CertKeyData {
+impl Decode for PublicCredential {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> core::result::Result<Self, Self::Error> {
@@ -31,7 +31,7 @@ impl Decode for CertKeyData {
     }
 }
 
-impl Encode for CertKeyData {
+impl Encode for PublicCredential {
     fn encoded_len(&self) -> std::result::Result<usize, ssh_encoding::Error> {
         match self {
             Self::Key(pubkey) => pubkey.encoded_len(),
@@ -50,13 +50,13 @@ impl Encode for CertKeyData {
     }
 }
 
-impl From<KeyData> for CertKeyData {
+impl From<KeyData> for PublicCredential {
     fn from(value: KeyData) -> Self {
         Self::Key(value)
     }
 }
 
-impl From<Certificate> for CertKeyData {
+impl From<Certificate> for PublicCredential {
     fn from(value: Certificate) -> Self {
         Self::Cert(value)
     }
