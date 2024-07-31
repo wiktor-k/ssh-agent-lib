@@ -2,7 +2,7 @@
 
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
 
-use super::cert_key_data::CertKeyData;
+use super::PublicCredential;
 use crate::proto::{Error, Result};
 
 /// Data returned to the client when listing keys.
@@ -13,7 +13,7 @@ use crate::proto::{Error, Result};
 #[derive(Clone, PartialEq, Debug)]
 pub struct Identity {
     /// A standard public-key encoding of an underlying key.
-    pub pubkey: CertKeyData,
+    pub pubkey: PublicCredential,
 
     /// A human-readable comment
     pub comment: String,
@@ -36,7 +36,7 @@ impl Decode for Identity {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let pubkey = reader.read_prefixed(CertKeyData::decode)?;
+        let pubkey = reader.read_prefixed(PublicCredential::decode)?;
         let comment = String::decode(reader)?;
 
         Ok(Self { pubkey, comment })

@@ -64,7 +64,7 @@ use service_binding::Binding;
 use ssh_agent_lib::{
     agent::Session,
     client::connect,
-    proto::{CertKeyData, Extension, SignRequest},
+    proto::{Extension, PublicCredential, SignRequest},
 };
 use ssh_key::public::KeyData;
 use tokio::runtime::Runtime;
@@ -372,7 +372,7 @@ fn main() -> testresult::TestResult {
                 let mut keyflags = KeyFlags::default();
                 keyflags.set_encrypt_comms(true);
                 keyflags.set_encrypt_storage(true);
-                let CertKeyData::Key(pubkey) = &decryption_id.pubkey else {
+                let PublicCredential::Key(pubkey) = &decryption_id.pubkey else {
                     panic!("Only pubkeys are supported.");
                 };
                 let pk = ssh_to_pgp(pubkey.clone(), KeyRole::Decryption);
@@ -391,7 +391,7 @@ fn main() -> testresult::TestResult {
                 vec![]
             };
 
-            let CertKeyData::Key(pubkey) = pubkey else {
+            let PublicCredential::Key(pubkey) = pubkey else {
                 panic!("Only pubkeys are supported.");
             };
             let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
@@ -417,7 +417,7 @@ fn main() -> testresult::TestResult {
             signed_pk.to_writer(&mut std::io::stdout())?;
         }
         Args::Sign => {
-            let CertKeyData::Key(pubkey) = pubkey else {
+            let PublicCredential::Key(pubkey) = pubkey else {
                 panic!("Only pubkeys are supported.");
             };
             let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
