@@ -12,8 +12,8 @@ use ssh_agent_lib::agent::{listen, Session};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::{QueryResponse, RestrictDestination, SessionBind};
 use ssh_agent_lib::proto::{
-    message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
-    Credential, Extension, KeyConstraint, RemoveIdentity, SignRequest, SmartcardKey,
+    message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained, Extension,
+    KeyConstraint, PrivateCredential, RemoveIdentity, SignRequest, SmartcardKey,
 };
 use ssh_key::{
     private::{KeypairData, PrivateKey},
@@ -74,7 +74,7 @@ impl KeyStorage {
 #[crate::async_trait]
 impl Session for KeyStorage {
     async fn sign(&mut self, sign_request: SignRequest) -> Result<Signature, AgentError> {
-        let pubkey: PublicKey = sign_request.pubkey.clone().into();
+        let pubkey: PublicKey = sign_request.pubkey.key_data().clone().into();
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
             match identity.privkey.key_data() {
@@ -113,7 +113,7 @@ impl Session for KeyStorage {
         let mut identities = vec![];
         for identity in self.identities.lock().unwrap().iter() {
             identities.push(message::Identity {
-                pubkey: identity.pubkey.key_data().clone(),
+                pubkey: identity.pubkey.key_data().clone().into(),
                 comment: identity.comment.clone(),
             })
         }
@@ -121,7 +121,7 @@ impl Session for KeyStorage {
     }
 
     async fn add_identity(&mut self, identity: AddIdentity) -> Result<(), AgentError> {
-        if let Credential::Key { privkey, comment } = identity.credential {
+        if let PrivateCredential::Key { privkey, comment } = identity.credential {
             let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
             self.identity_add(Identity {
                 pubkey: PublicKey::from(&privkey),
@@ -152,7 +152,7 @@ impl Session for KeyStorage {
                     info!("Destination constraint: {destination:?}");
                 }
 
-                if let Credential::Key { privkey, comment } = identity.credential.clone() {
+                if let PrivateCredential::Key { privkey, comment } = identity.credential.clone() {
                     let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
                     self.identity_add(Identity {
                         pubkey: PublicKey::from(&privkey),

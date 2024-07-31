@@ -64,7 +64,7 @@ use service_binding::Binding;
 use ssh_agent_lib::{
     agent::Session,
     client::connect,
-    proto::{Extension, SignRequest},
+    proto::{Extension, PublicCredential, SignRequest},
 };
 use ssh_key::public::KeyData;
 use tokio::runtime::Runtime;
@@ -295,7 +295,7 @@ impl SecretKeyTrait for WrappedKey {
             .block_on(async {
                 let mut client = self.client.lock().await;
                 let result = client.sign(SignRequest {
-                    pubkey: self.pubkey.clone(),
+                    pubkey: self.pubkey.clone().into(),
                     data: data.to_vec(),
                     flags: 0,
                 });
@@ -372,7 +372,8 @@ fn main() -> testresult::TestResult {
                 let mut keyflags = KeyFlags::default();
                 keyflags.set_encrypt_comms(true);
                 keyflags.set_encrypt_storage(true);
-                let pk = ssh_to_pgp(decryption_id.pubkey.clone(), KeyRole::Decryption);
+                let pubkey = decryption_id.pubkey.key_data();
+                let pk = ssh_to_pgp(pubkey.clone(), KeyRole::Decryption);
                 vec![pgp::PublicSubkey::new(
                     pgp::packet::PublicSubkey::new(
                         pk.packet_version(),
@@ -388,6 +389,9 @@ fn main() -> testresult::TestResult {
                 vec![]
             };
 
+            let PublicCredential::Key(pubkey) = pubkey else {
+                panic!("Only pubkeys are supported.");
+            };
             let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
             let mut keyflags = KeyFlags::default();
             keyflags.set_sign(true);
@@ -411,6 +415,9 @@ fn main() -> testresult::TestResult {
             signed_pk.to_writer(&mut std::io::stdout())?;
         }
         Args::Sign => {
+            let PublicCredential::Key(pubkey) = pubkey else {
+                panic!("Only pubkeys are supported.");
+            };
             let signer = WrappedKey::new(pubkey.clone(), client, KeyRole::Signing);
             let signature = SignatureConfig::new_v4(
                 SignatureVersion::V4,
@@ -445,8 +452,8 @@ fn main() -> testresult::TestResult {
             pgp::packet::write_packet(&mut std::io::stdout(), &signature)?;
         }
         Args::Decrypt => {
-            let decryptor =
-                WrappedKey::new(decrypt_ids[0].pubkey.clone(), client, KeyRole::Decryption);
+            let pubkey = decrypt_ids[0].pubkey.key_data();
+            let decryptor = WrappedKey::new(pubkey.clone(), client, KeyRole::Decryption);
             let message = Message::from_bytes(std::io::stdin())?;
 
             let Message::Encrypted { esk, edata } = message else {

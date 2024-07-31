@@ -71,7 +71,7 @@ impl CardSession {
                 if let AlgorithmAttributes::Ecc(ecc) = e.algo() {
                     if ecc.ecc_type() == EccType::EdDSA {
                         let pubkey = KeyData::Ed25519(Ed25519PublicKey(e.data().try_into()?));
-                        if pubkey == request.pubkey {
+                        if pubkey == *request.pubkey.key_data() {
                             let pin = self.pwds.get(&ident).await;
                             return if let Some(pin) = pin {
                                 let str = pin.expose_secret().as_bytes().to_vec();
@@ -173,7 +173,8 @@ impl Session for CardSession {
                                 return Ok::<_, Box<dyn std::error::Error>>(Some(Identity {
                                     pubkey: KeyData::Ed25519(Ed25519PublicKey(
                                         e.data().try_into()?,
-                                    )),
+                                    ))
+                                    .into(),
                                     comment: ident,
                                 }));
                             }
@@ -231,7 +232,8 @@ impl Session for CardSession {
                                     return Ok::<_, Box<dyn std::error::Error>>(Some(Identity {
                                         pubkey: KeyData::Ed25519(Ed25519PublicKey(
                                             e.data().try_into()?,
-                                        )),
+                                        ))
+                                        .into(),
                                         comment: ident,
                                     }));
                                 }

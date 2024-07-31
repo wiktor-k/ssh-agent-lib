@@ -1,15 +1,14 @@
 //! Add a key to an agent with or without constraints and supporting data types.
 
 mod constrained;
-mod credential;
 
 pub use constrained::*;
-pub use credential::*;
 use secrecy::ExposeSecret as _;
 use secrecy::SecretString;
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
 use ssh_key::public::KeyData;
 
+use super::PrivateCredential;
 use crate::proto::{Error, Result};
 
 /// Add a key to an agent.
@@ -20,14 +19,14 @@ use crate::proto::{Error, Result};
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentity {
     /// A credential (private & public key, or private key / certificate) to add to the agent
-    pub credential: Credential,
+    pub credential: PrivateCredential,
 }
 
 impl Decode for AddIdentity {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let credential = Credential::decode(reader)?;
+        let credential = PrivateCredential::decode(reader)?;
 
         Ok(Self { credential })
     }
