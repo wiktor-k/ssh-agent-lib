@@ -372,9 +372,7 @@ fn main() -> testresult::TestResult {
                 let mut keyflags = KeyFlags::default();
                 keyflags.set_encrypt_comms(true);
                 keyflags.set_encrypt_storage(true);
-                let PublicCredential::Key(pubkey) = &decryption_id.pubkey else {
-                    panic!("Only pubkeys are supported.");
-                };
+                let pubkey = decryption_id.pubkey.key_data();
                 let pk = ssh_to_pgp(pubkey.clone(), KeyRole::Decryption);
                 vec![pgp::PublicSubkey::new(
                     pgp::packet::PublicSubkey::new(
