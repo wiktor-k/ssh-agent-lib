@@ -1,15 +1,14 @@
 //! Add a key to an agent with or without constraints and supporting data types.
 
 mod constrained;
-mod credential;
 
 pub use constrained::*;
-pub use credential::*;
 use secrecy::ExposeSecret as _;
 use secrecy::SecretString;
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
 use ssh_key::public::KeyData;
 
+use super::PrivateCredential;
 use crate::proto::{Error, Result};
 
 /// Add a key to an agent.
