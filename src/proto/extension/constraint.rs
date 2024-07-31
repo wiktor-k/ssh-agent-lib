@@ -290,7 +290,7 @@ mod tests {
 
         #[rustfmt::skip]
         let mut buffer: &[u8] = const_str::concat_bytes!(
-            [0, 0, 0, 114], //
+            [0, 0, 0, 110], //
             [0, 0, 0, 12], //from:
             [0, 0, 0, 0], //username
             [0, 0, 0, 0], //hostname
