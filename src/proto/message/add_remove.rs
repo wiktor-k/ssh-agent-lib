@@ -20,14 +20,14 @@ use crate::proto::{Error, Result};
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentity {
     /// A credential (private & public key, or private key / certificate) to add to the agent
-    pub credential: Credential,
+    pub credential: PrivateCredential,
 }
 
 impl Decode for AddIdentity {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let credential = Credential::decode(reader)?;
+        let credential = PrivateCredential::decode(reader)?;
 
         Ok(Self { credential })
     }

@@ -12,8 +12,8 @@ use ssh_agent_lib::agent::{listen, Session};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::{QueryResponse, RestrictDestination, SessionBind};
 use ssh_agent_lib::proto::{
-    message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained,
-    Credential, Extension, KeyConstraint, RemoveIdentity, SignRequest, SmartcardKey,
+    message, signature, AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained, Extension,
+    KeyConstraint, PrivateCredential, RemoveIdentity, SignRequest, SmartcardKey,
 };
 use ssh_key::{
     private::{KeypairData, PrivateKey},
@@ -121,7 +121,7 @@ impl Session for KeyStorage {
     }
 
     async fn add_identity(&mut self, identity: AddIdentity) -> Result<(), AgentError> {
-        if let Credential::Key { privkey, comment } = identity.credential {
+        if let PrivateCredential::Key { privkey, comment } = identity.credential {
             let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
             self.identity_add(Identity {
                 pubkey: PublicKey::from(&privkey),
@@ -152,7 +152,7 @@ impl Session for KeyStorage {
                     info!("Destination constraint: {destination:?}");
                 }
 
-                if let Credential::Key { privkey, comment } = identity.credential.clone() {
+                if let PrivateCredential::Key { privkey, comment } = identity.credential.clone() {
                     let privkey = PrivateKey::try_from(privkey).map_err(AgentError::other)?;
                     self.identity_add(Identity {
                         pubkey: PublicKey::from(&privkey),

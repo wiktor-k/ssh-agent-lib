@@ -16,7 +16,7 @@ use crate::proto::{Error, PrivateKeyData, Result};
 /// This structure covers both types of identities a user may
 /// send to an agent as part of a [`Request::AddIdentity`](crate::proto::Request::AddIdentity) message.
 #[derive(Clone, PartialEq, Debug)]
-pub enum Credential {
+pub enum PrivateCredential {
     /// A public/private key pair
     Key {
         /// Public/private key pair data
@@ -42,7 +42,7 @@ pub enum Credential {
     },
 }
 
-impl Decode for Credential {
+impl Decode for PrivateCredential {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
@@ -57,7 +57,7 @@ impl Decode for Credential {
             let privkey = PrivateKeyData::decode_as(reader, algorithm.clone())?;
             let comment = String::decode(reader)?;
 
-            Ok(Credential::Cert {
+            Ok(PrivateCredential::Cert {
                 algorithm,
                 certificate,
                 privkey,
@@ -67,12 +67,12 @@ impl Decode for Credential {
             let algorithm = Algorithm::from_str(&alg).map_err(ssh_encoding::Error::from)?;
             let privkey = KeypairData::decode_as(reader, algorithm)?;
             let comment = String::decode(reader)?;
-            Ok(Credential::Key { privkey, comment })
+            Ok(PrivateCredential::Key { privkey, comment })
         }
     }
 }
 
-impl Encode for Credential {
+impl Encode for PrivateCredential {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
         match self {
             Self::Key { privkey, comment } => {
