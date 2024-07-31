@@ -1,31 +1,33 @@
-use std::str::FromStr as _;
+use ssh_encoding::{Decode, Encode, Reader};
+use ssh_key::{public::KeyData, Certificate};
 
-use ssh_encoding::{CheckedSum as _, Decode, Encode, Reader};
-use ssh_key::{public::KeyData, Algorithm, Certificate, PublicKey};
-
-use crate::proto::{Error, Result};
+use crate::proto::Error;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+/// Represents a public credential.
 pub enum CertKeyData {
+    /// Plain public key.
     Key(KeyData),
+    /// Signed public key.
     Cert(Certificate),
+}
+
+impl CertKeyData {
+    /// Returns a reference to the [KeyData].
+    pub fn key_data(&self) -> &KeyData {
+        match self {
+            Self::Key(key) => key,
+            Self::Cert(cert) => cert.public_key(),
+        }
+    }
 }
 
 impl Decode for CertKeyData {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> core::result::Result<Self, Self::Error> {
-        let alg = String::decode(reader)?;
-        let cert_alg = Algorithm::new_certificate(&alg);
-
-        if let Ok(algorithm) = cert_alg {
-            let certificate = Certificate::decode_as(algorithm.clone(), reader)?;
-            Ok(Self::Cert(certificate))
-        } else {
-            let algorithm = Algorithm::from_str(&alg).map_err(ssh_encoding::Error::from)?;
-            let pubkey = KeyData::decode_as(reader, algorithm)?;
-            Ok(Self::Key(pubkey))
-        }
+        // TODO: implement parsing certificates
+        Ok(Self::Key(KeyData::decode(reader)?))
     }
 }
 

@@ -1,7 +1,6 @@
 //! Signature request with data to be signed with a key in an agent.
 
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
-use ssh_key::public::KeyData;
 
 use super::cert_key_data::CertKeyData;
 use crate::proto::{Error, Result};
