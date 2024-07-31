@@ -295,7 +295,7 @@ impl SecretKeyTrait for WrappedKey {
             .block_on(async {
                 let mut client = self.client.lock().await;
                 let result = client.sign(SignRequest {
-                    pubkey: self.pubkey.clone(),
+                    pubkey: self.pubkey.clone().into(),
                     data: data.to_vec(),
                     flags: 0,
                 });
@@ -454,9 +454,7 @@ fn main() -> testresult::TestResult {
             pgp::packet::write_packet(&mut std::io::stdout(), &signature)?;
         }
         Args::Decrypt => {
-            let CertKeyData::Key(pubkey) = decrypt_ids[0].pubkey else {
-                panic!("Only pubkeys are supported");
-            };
+            let pubkey = decrypt_ids[0].pubkey.key_data();
             let decryptor = WrappedKey::new(pubkey.clone(), client, KeyRole::Decryption);
             let message = Message::from_bytes(std::io::stdin())?;
 

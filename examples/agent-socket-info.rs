@@ -27,7 +27,7 @@ impl Session for AgentSocketInfo {
     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         Ok(vec![Identity {
             // this is just a dummy key, the comment is important
-            pubkey: KeyData::Ed25519(ssh_key::public::Ed25519PublicKey([0; 32])),
+            pubkey: KeyData::Ed25519(ssh_key::public::Ed25519PublicKey([0; 32])).into(),
             comment: self.comment.clone(),
         }])
     }

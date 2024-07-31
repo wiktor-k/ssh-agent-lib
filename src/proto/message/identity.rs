@@ -1,7 +1,6 @@
 //! Data returned to the client when listing keys.
 
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
-use ssh_key::public::KeyData;
 
 use super::cert_key_data::CertKeyData;
 use crate::proto::{Error, Result};
