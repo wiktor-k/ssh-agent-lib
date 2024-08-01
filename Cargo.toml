@@ -44,6 +44,7 @@ rand = "0.8.5"
 rsa = { version = "0.9.6", features = ["sha2", "sha1"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 sha1 = { version = "0.10.6", default-features = false, features = ["oid"] }
+sha2 = { version = "0.10.6", default-features = false }
 testresult = "0.4.0"
 hex-literal = "0.4.1"
 ssh-key = { version = "0.6.6", features = ["p256", "rsa"] }
@@ -58,3 +59,9 @@ retainer = "0.3.0"
 pgp = "0.13.0"
 chrono = "0.4.38"
 interprocess = "2.2.0"
+tss-esapi = { version = "8.0.0-alpha", features = ["generate-bindings", "abstraction", "serde"] }
+postcard = { version = "1.0.8", features = ["use-std"] }
+
+[patch.crates-io]
+tss-esapi = { git = "https://github.com/baloo/rust-tss-esapi.git", branch = "baloo/rust-crypto/signer-interface" }
+tss-esapi-sys = { git = "https://github.com/baloo/rust-tss-esapi.git", branch = "baloo/rust-crypto/signer-interface" }
