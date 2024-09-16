@@ -39,22 +39,22 @@ codec = ["tokio-util"]
 agent = ["futures", "log", "tokio", "async-trait", "codec"]
 
 [dev-dependencies]
-env_logger = "0.11.3"
+env_logger = "0.11.5"
 rand = "0.8.5"
 rsa = { version = "0.9.6", features = ["sha2", "sha1"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 sha1 = { version = "0.10.6", default-features = false, features = ["oid"] }
-testresult = "0.4.0"
+testresult = "0.4.1"
 hex-literal = "0.4.1"
 ssh-key = { version = "0.6.6", features = ["p256", "rsa"] }
 p256 = { version = "0.13.2" }
 const-str = "0.5.7"
-rstest = "0.21.0"
+rstest = "0.22.0"
 openpgp-card = "0.5.0"
 card-backend-pcsc = "0.5.0"
-clap = { version = "4.5.7", features = ["derive"] }
+clap = { version = "4.5.17", features = ["derive"] }
 secrecy = "0.8.0"
 retainer = "0.3.0"
-pgp = "0.13.0"
+pgp = "0.13.2"
 chrono = "0.4.38"
-interprocess = "2.2.0"
+interprocess = "2.2.1"
