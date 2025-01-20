@@ -4,6 +4,10 @@ The examples in this directory show slightly more elaborate use-cases that can b
 
 ## Agents
 
+### `random-key`
+
+Generates a new random key and supports only the basic operations used by the OpenSSH client: retrieving supported public keys (`request_identities`) and signing using the ephemeral key (`sign_request`).
+
 ### `key-storage`
 
 Implements a simple agent which remembers RSA private keys (added via `ssh-add`) and allows fetching their public keys and signing using three different signing mechanisms.
