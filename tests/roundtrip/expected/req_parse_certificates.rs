@@ -12,8 +12,8 @@ pub fn expected() -> Request {
             credential: Credential::Cert {
                 algorithm: Algorithm::new("ssh-rsa").unwrap(),
                 certificate: fixtures::demo_certificate(),
-                privkey: PrivateKeyData::Rsa(RsaPrivateKey {
-                    d: Mpint::from_bytes(&hex!(
+                privkey: PrivateKeyData::Rsa(RsaPrivateKey::new(
+                    Mpint::from_bytes(&hex!(
                         "
                         063980B05C8B42329056DE1F025EB78D 68FDF1B2631811302C75913B86E81B28
                         8C975E6BFF04CF464705A2CE23DE7085 C2FF79E75CFEFD393F4B0420253B5526
@@ -30,7 +30,7 @@ pub fn expected() -> Request {
                         "
                     ))
                     .unwrap(),
-                    iqmp: Mpint::from_bytes(&hex!(
+                    Mpint::from_bytes(&hex!(
                         "
                         00E0DD19B95C563D9198F0F4E4B19677 FD17465875757DA008B93C0138FD89D7
                         1A1F5669D967B69814462530642A5595 DE4EE39A838AC8D38136CC2C20F7A7E6
@@ -41,7 +41,7 @@ pub fn expected() -> Request {
                         B2"
                     ))
                     .unwrap(),
-                    p: Mpint::from_bytes(&hex!(
+                    Mpint::from_bytes(&hex!(
                         "
                         00FABA9137F37DC9AB8B2821CE0C444 B03F5EA6EA5059488214ECCCC02417C
                         601E32E923710D2DC1417BFE293502A ED390EB93E544A51FD4686B4B520E49
@@ -52,7 +52,7 @@ pub fn expected() -> Request {
                         2A134F4ED9B181"
                     ))
                     .unwrap(),
-                    q: Mpint::from_bytes(&hex!(
+                    Mpint::from_bytes(&hex!(
                         "
                         00E4F88607532262EAF1DB3F11D0253 5C32A7506ACB9BCD2B3E9B852A71FEA
                         134921015399BE8830DB4000B7F33EC 3AF71B56448178BD4D3310AD322855C
@@ -63,7 +63,7 @@ pub fn expected() -> Request {
                         F51F2C04164DE1"
                     ))
                     .unwrap(),
-                }),
+                ).unwrap()),
                 comment: "baloo@angela".to_string(),
             },
         },
