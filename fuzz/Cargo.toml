@@ -9,7 +9,6 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-ssh-encoding = "0.2.0"
 
 [dependencies.ssh-agent-lib]
 path = ".."

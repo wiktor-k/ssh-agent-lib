@@ -82,17 +82,17 @@ impl Session for KeyStorage {
                     let algorithm;
 
                     let private_key: rsa::RsaPrivateKey = rsa::RsaPrivateKey::from_components(
-                        rsa::BigUint::try_from(&key.public.n).map_err(AgentError::other)?,
-                        rsa::BigUint::try_from(&key.public.e).map_err(AgentError::other)?,
-                        rsa::BigUint::try_from(&key.private.d).map_err(AgentError::other)?,
+                        rsa::BoxedUint::from_be_slice_vartime(key.public().n().as_bytes()),
+                        rsa::BoxedUint::from_be_slice_vartime(key.public().e().as_bytes()),
+                        rsa::BoxedUint::from_be_slice_vartime(key.private().d().as_bytes()),
                         vec![
-                            rsa::BigUint::try_from(&key.private.p).map_err(AgentError::other)?,
+                            rsa::BoxedUint::from_be_slice_vartime(key.private().p().as_bytes()),
                             // ssh-key 0.6.7 uses "p" here so we need to inline a fixed version:
-                            rsa::BigUint::try_from(&key.private.q).map_err(AgentError::other)?,
+                            rsa::BoxedUint::from_be_slice_vartime(key.private().q().as_bytes()),
                         ],
                     )
                     .map_err(AgentError::other)?;
-                    let mut rng = rand::thread_rng();
+                    let mut rng = rand::rng();
                     let data = &sign_request.data;
 
                     let signature = if sign_request.flags & signature::RSA_SHA2_512 != 0 {

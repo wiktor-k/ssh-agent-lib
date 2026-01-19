@@ -4,7 +4,7 @@
 //! - [draft-miller-ssh-agent-14](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html)
 //! - [OpenSSH `PROTOCOL.agent`](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent)
 
-use signature::Verifier;
+use signature::Verifier as _;
 use ssh_encoding::{CheckedSum, Decode, Encode, Error as EncodingError, Reader, Writer};
 use ssh_key::{public::KeyData, Signature};
 

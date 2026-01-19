@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use ssh_encoding::{Decode, Encode, Reader, Writer};
+use ssh_encoding::{bigint::CtEq as _, Decode, Encode, Reader, Writer};
 use ssh_key::{
     private::{self, DsaPrivateKey, Ed25519Keypair, RsaPrivateKey},
     Algorithm, EcdsaCurve, Error, Result,
@@ -36,7 +36,7 @@ impl ConstantTimeEq for EcdsaPrivateKey {
             Self::NistP521(private) => private.as_slice(),
         };
 
-        private_key_a.ct_eq(private_key_b)
+        ConstantTimeEq::ct_eq(private_key_a, private_key_b)
     }
 }
 
@@ -154,10 +154,10 @@ impl ConstantTimeEq for PrivateKeyData {
     fn ct_eq(&self, other: &Self) -> Choice {
         // Note: constant-time with respect to key *data* comparisons, not algorithms
         match (self, other) {
-            (Self::Dsa(a), Self::Dsa(b)) => a.ct_eq(b),
+            (Self::Dsa(a), Self::Dsa(b)) => a.ct_eq(b).into(),
             (Self::Ecdsa(a), Self::Ecdsa(b)) => a.ct_eq(b),
-            (Self::Ed25519(a), Self::Ed25519(b)) => a.ct_eq(b),
-            (Self::Rsa(a), Self::Rsa(b)) => a.ct_eq(b),
+            (Self::Ed25519(a), Self::Ed25519(b)) => a.ct_eq(b).into(),
+            (Self::Rsa(a), Self::Rsa(b)) => a.ct_eq(b).into(),
             #[allow(unreachable_patterns)]
             _ => Choice::from(0),
         }

@@ -28,7 +28,7 @@ struct RandomKey {
 
 impl RandomKey {
     pub fn new() -> Result<Self, AgentError> {
-        let rsa = RsaKeypair::random(&mut rand::thread_rng(), 2048).map_err(AgentError::other)?;
+        let rsa = RsaKeypair::random(&mut rand::rng(), 2048).map_err(AgentError::other)?;
         let privkey = PrivateKey::new(KeypairData::Rsa(rsa), "automatically generated RSA key")
             .map_err(AgentError::other)?;
         Ok(Self {
@@ -50,7 +50,7 @@ impl Session for RandomKey {
 
         if let KeypairData::Rsa(ref key) = private_key.key_data() {
             let private_key: rsa::RsaPrivateKey = key.try_into().map_err(AgentError::other)?;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let data = &sign_request.data;
 
             Ok(if sign_request.flags & signature::RSA_SHA2_512 != 0 {
@@ -89,7 +89,7 @@ impl Session for RandomKey {
         let identity = self.private_key.lock().unwrap();
         Ok(vec![Identity {
             pubkey: PublicCredential::Key(PublicKey::from(identity.deref()).into()),
-            comment: identity.comment().into(),
+            comment: identity.comment().to_string(),
         }])
     }
 }
