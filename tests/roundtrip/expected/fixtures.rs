@@ -20,15 +20,18 @@ pub fn demo_key() -> EcdsaKeypair {
             .into(),
             false,
         ),
-        private: EcdsaPrivateKey::from(p256::SecretKey::new(
-            p256::elliptic_curve::ScalarPrimitive::new(
-                p256::elliptic_curve::bigint::Uint::from_be_slice(&hex!(
-                    "ffd9f2ce4d0ee5870d8dc7cf771a7669"
-                    "a0b96fe44bb58a8a0bc75a76b4f78240"
-                )),
+        private: EcdsaPrivateKey::from(
+            p256::SecretKey::from_scalar(
+                p256::elliptic_curve::ScalarValue::new(
+                    p256::elliptic_curve::bigint::Uint::from_be_slice(&hex!(
+                        "ffd9f2ce4d0ee5870d8dc7cf771a7669"
+                        "a0b96fe44bb58a8a0bc75a76b4f78240"
+                    )),
+                )
+                .unwrap(),
             )
             .unwrap(),
-        )),
+        ),
     }
 }
 
