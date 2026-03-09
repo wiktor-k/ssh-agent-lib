@@ -17,6 +17,7 @@ use crate::proto::{Error, PrivateKeyData, Result};
 /// This structure covers both types of identities a user may
 /// send to an agent as part of a [`Request::AddIdentity`](crate::proto::Request::AddIdentity) message.
 #[derive(Clone, PartialEq, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum PrivateCredential {
     /// A public/private key pair
     Key {
@@ -116,6 +117,7 @@ impl Encode for PrivateCredential {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[allow(clippy::large_enum_variant)]
 /// Represents a public credential.
 pub enum PublicCredential {
     /// Plain public key.

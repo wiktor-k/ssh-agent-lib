@@ -2,13 +2,13 @@
 
 mod constrained;
 
+use super::PrivateCredential;
+use super::PublicCredential;
+use crate::proto::{Error, Result};
 pub use constrained::*;
 use secrecy::ExposeSecret as _;
 use secrecy::SecretString;
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
-use super::PublicCredential;
-use super::PrivateCredential;
-use crate::proto::{Error, Result};
 
 /// Add a key to an agent.
 ///
