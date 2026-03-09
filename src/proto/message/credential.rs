@@ -138,8 +138,28 @@ impl Decode for PublicCredential {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> core::result::Result<Self, Self::Error> {
-        // TODO: implement parsing certificates
-        Ok(Self::Key(KeyData::decode(reader)?))
+        // Read remaining bytes and prepend the algorithm string so the
+        // full blob can be passed to Certificate::decode or
+        // KeyData::decode, both of which expect to read the algorithm
+        // string themselves.
+        let alg = String::decode(reader)?;
+
+        let remaining_len = reader.remaining_len();
+        let mut buf = Vec::with_capacity(4 + alg.len() + remaining_len);
+        alg.encode(&mut buf)?;
+        let mut tail = vec![0u8; remaining_len];
+        reader.read(&mut tail)?;
+        buf.extend_from_slice(&tail);
+
+        let mut slice: &[u8] = &buf;
+
+        if Algorithm::new_certificate(&alg).is_ok() {
+            let cert = Certificate::decode(&mut slice)?;
+            Ok(Self::Cert(cert))
+        } else {
+            let key = KeyData::decode(&mut slice)?;
+            Ok(Self::Key(key))
+        }
     }
 }
 
