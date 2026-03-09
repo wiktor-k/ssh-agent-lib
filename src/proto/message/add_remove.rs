@@ -6,8 +6,7 @@ pub use constrained::*;
 use secrecy::ExposeSecret as _;
 use secrecy::SecretString;
 use ssh_encoding::{self, CheckedSum, Decode, Encode, Reader, Writer};
-use ssh_key::public::KeyData;
-
+use super::PublicCredential;
 use super::PrivateCredential;
 use crate::proto::{Error, Result};
 
@@ -101,14 +100,14 @@ impl PartialEq for SmartcardKey {
 #[derive(Clone, PartialEq, Debug)]
 pub struct RemoveIdentity {
     /// The public key portion of the [`Identity`](super::Identity) to be removed
-    pub pubkey: KeyData,
+    pub pubkey: PublicCredential,
 }
 
 impl Decode for RemoveIdentity {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let pubkey = reader.read_prefixed(KeyData::decode)?;
+        let pubkey = reader.read_prefixed(PublicCredential::decode)?;
 
         Ok(Self { pubkey })
     }
