@@ -32,7 +32,7 @@ pub enum Credential {
         algorithm: Algorithm,
 
         /// Certificate data.
-        certificate: Certificate,
+        certificate: Box<Certificate>,
 
         /// Private key data.
         privkey: PrivateKeyData,
@@ -59,7 +59,7 @@ impl Decode for Credential {
 
             Ok(Credential::Cert {
                 algorithm,
-                certificate,
+                certificate: Box::new(certificate),
                 privkey,
                 comment,
             })
