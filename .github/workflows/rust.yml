@@ -17,7 +17,7 @@ jobs:
     name: Check spelling
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check spelling
         uses: codespell-project/actions-codespell@v2
 
@@ -31,7 +31,7 @@ jobs:
         - os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: taiki-e/install-action@just
       - run: rustup install nightly
       - run: rustup component add rustfmt --toolchain nightly
@@ -48,7 +48,7 @@ jobs:
         - os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: taiki-e/install-action@just
       - run: just install-packages
       - name: Run unit tests
@@ -58,9 +58,9 @@ jobs:
     name: Check dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run dependencies check
-        uses: EmbarkStudios/cargo-deny-action@v1
+        uses: EmbarkStudios/cargo-deny-action@v2
 
   lints:
     name: Clippy lints
@@ -72,7 +72,7 @@ jobs:
         - os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: taiki-e/install-action@just
       - run: just install-packages
       - name: Check for lints

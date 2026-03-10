@@ -1,8 +1,8 @@
 use hex_literal::hex;
-use ssh_agent_lib::proto::{AddIdentity, AddIdentityConstrained, Credential, KeyConstraint, PrivateKeyData, Request,};
-use ssh_key::{
-    private::RsaPrivateKey, Algorithm, Mpint
+use ssh_agent_lib::proto::{
+    AddIdentity, AddIdentityConstrained, Credential, KeyConstraint, PrivateKeyData, Request,
 };
+use ssh_key::{private::RsaPrivateKey, Algorithm, Mpint};
 
 use super::fixtures;
 
@@ -11,7 +11,7 @@ pub fn expected() -> Request {
         identity: AddIdentity {
             credential: Credential::Cert {
                 algorithm: Algorithm::new("ssh-rsa").unwrap(),
-                certificate: fixtures::demo_certificate(),
+                certificate: fixtures::demo_certificate().into(),
                 privkey: PrivateKeyData::Rsa(RsaPrivateKey {
                     d: Mpint::from_bytes(&hex!(
                         "
