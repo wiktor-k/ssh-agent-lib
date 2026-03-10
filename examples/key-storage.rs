@@ -81,8 +81,17 @@ impl Session for KeyStorage {
                 KeypairData::Rsa(ref key) => {
                     let algorithm;
 
-                    let private_key: rsa::RsaPrivateKey =
-                        key.try_into().map_err(AgentError::other)?;
+                    let private_key: rsa::RsaPrivateKey = rsa::RsaPrivateKey::from_components(
+                        rsa::BigUint::try_from(&key.public.n).map_err(AgentError::other)?,
+                        rsa::BigUint::try_from(&key.public.e).map_err(AgentError::other)?,
+                        rsa::BigUint::try_from(&key.private.d).map_err(AgentError::other)?,
+                        vec![
+                            rsa::BigUint::try_from(&key.private.p).map_err(AgentError::other)?,
+                            // ssh-key 0.6.7 uses "p" here so we need to inline a fixed version:
+                            rsa::BigUint::try_from(&key.private.q).map_err(AgentError::other)?,
+                        ],
+                    )
+                    .map_err(AgentError::other)?;
                     let mut rng = rand::thread_rng();
                     let data = &sign_request.data;
 
