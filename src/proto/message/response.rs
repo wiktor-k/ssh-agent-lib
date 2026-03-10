@@ -35,7 +35,7 @@ pub enum Response {
 }
 
 impl Response {
-    /// The protocol message identifier for a given [`Response`](super::Response) message type.
+    /// The protocol message identifier for a given [`Response`] message type.
     ///
     /// Described in [draft-miller-ssh-agent-14 § 6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-6.1).
     pub fn message_id(&self) -> u8 {
