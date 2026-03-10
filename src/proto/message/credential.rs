@@ -33,7 +33,7 @@ pub enum PrivateCredential {
         algorithm: Algorithm,
 
         /// Certificate data.
-        certificate: Certificate,
+        certificate: Box<Certificate>,
 
         /// Private key data.
         privkey: PrivateKeyData,
@@ -51,10 +51,12 @@ impl Decode for PrivateCredential {
         let cert_alg = Algorithm::new_certificate(&alg);
 
         if let Ok(algorithm) = cert_alg {
-            let certificate = reader.read_prefixed(|reader| {
-                let cert = Certificate::decode(reader)?;
-                Ok::<_, Error>(cert)
-            })?;
+            let certificate = reader
+                .read_prefixed(|reader| {
+                    let cert = Certificate::decode(reader)?;
+                    Ok::<_, Error>(cert)
+                })?
+                .into();
             let privkey = PrivateKeyData::decode_as(reader, algorithm.clone())?;
             let comment = String::decode(reader)?;
 
@@ -121,7 +123,7 @@ pub enum PublicCredential {
     /// Plain public key.
     Key(KeyData),
     /// Signed public key.
-    Cert(Certificate),
+    Cert(Box<Certificate>),
 }
 
 impl PublicCredential {
@@ -170,6 +172,6 @@ impl From<KeyData> for PublicCredential {
 
 impl From<Certificate> for PublicCredential {
     fn from(value: Certificate) -> Self {
-        Self::Cert(value)
+        Self::Cert(value.into())
     }
 }

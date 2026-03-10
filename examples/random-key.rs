@@ -10,7 +10,7 @@ use sha1::Sha1;
 use ssh_agent_lib::agent::NamedPipeListener as Listener;
 use ssh_agent_lib::agent::{listen, Session};
 use ssh_agent_lib::error::AgentError;
-use ssh_agent_lib::proto::{signature, Identity, SignRequest};
+use ssh_agent_lib::proto::{signature, Identity, PublicCredential, SignRequest};
 use ssh_key::private::RsaKeypair;
 use ssh_key::HashAlg;
 use ssh_key::{
@@ -41,7 +41,10 @@ impl RandomKey {
 impl Session for RandomKey {
     async fn sign(&mut self, sign_request: SignRequest) -> Result<Signature, AgentError> {
         let private_key = self.private_key.lock().unwrap();
-        if PublicKey::from(private_key.deref()).key_data() != &sign_request.pubkey {
+        let PublicCredential::Key(pubkey) = sign_request.pubkey else {
+            return Err(std::io::Error::other("Key not found").into());
+        };
+        if PublicKey::from(private_key.deref()).key_data() != &pubkey {
             return Err(std::io::Error::other("Key not found").into());
         }
 
@@ -85,7 +88,7 @@ impl Session for RandomKey {
     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         let identity = self.private_key.lock().unwrap();
         Ok(vec![Identity {
-            pubkey: PublicKey::from(identity.deref()).into(),
+            pubkey: PublicCredential::Key(PublicKey::from(identity.deref()).into()),
             comment: identity.comment().into(),
         }])
     }
