@@ -83,7 +83,7 @@ fix:
     # try to fix rustc issues
     cargo fix --allow-staged
     # try to fix clippy issues
-    cargo clippy --fix --allow-staged
+    cargo clippy --fix --allow-staged --allow-dirty
 
     # fmt must be last as clippy's changes may break formatting
     cargo +nightly fmt --all

@@ -1,5 +1,8 @@
 use hex_literal::hex;
-use ssh_agent_lib::proto::{AddIdentity, AddIdentityConstrained, Credential, Extension, KeyConstraint, Request, Unparsed};
+use ssh_agent_lib::proto::{
+    AddIdentity, AddIdentityConstrained, Extension, KeyConstraint, PrivateCredential, Request,
+    Unparsed,
+};
 use ssh_key::private::KeypairData;
 
 use super::fixtures;
@@ -7,7 +10,7 @@ use super::fixtures;
 pub fn expected() -> Request {
     Request::AddIdConstrained(AddIdentityConstrained {
         identity: AddIdentity {
-            credential: Credential::Key {
+            credential: PrivateCredential::Key {
                 privkey: KeypairData::Ecdsa(fixtures::demo_key()),
                 comment: "baloo@angela".to_string(),
             },
