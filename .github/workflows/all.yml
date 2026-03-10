@@ -1,0 +1,14 @@
+name: Collector
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+jobs:
+  allchecks:
+    name: All checks pass
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      contents: read
+    steps:
+      - uses: wechuli/allcheckspassed@v2
