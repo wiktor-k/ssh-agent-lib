@@ -1,6 +1,6 @@
 [package]
 name = "ssh-agent-lib-fuzz"
-version = "0.5.1"
+version = "0.5.2"
 publish = false
 edition = "2021"
 
