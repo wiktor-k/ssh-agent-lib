@@ -175,7 +175,7 @@ impl Session for KeyStorage {
     }
 
     async fn remove_identity(&mut self, identity: RemoveIdentity) -> Result<(), AgentError> {
-        let pubkey: PublicKey = identity.pubkey.into();
+        let pubkey: PublicKey = identity.credential.key_data().clone().into();
         self.identity_remove(&pubkey)?;
         Ok(())
     }
