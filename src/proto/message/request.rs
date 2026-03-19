@@ -164,7 +164,7 @@ mod tests {
         let Request::SignRequest(req) = req else {
             panic!("expected SignRequest");
         };
-        let PublicCredential::Cert(cert) = req.pubkey else {
+        let PublicCredential::Cert(cert) = req.credential else {
             panic!("expected certificate");
         };
         assert_eq!(cert.algorithm(), Algorithm::Rsa { hash: None });
@@ -177,7 +177,7 @@ mod tests {
         let Request::SignRequest(req) = req else {
             panic!("expected SignRequest");
         };
-        let PublicCredential::Key(cert) = req.pubkey else {
+        let PublicCredential::Key(cert) = req.credential else {
             panic!("expected key");
         };
         assert_eq!(cert.algorithm(), Algorithm::Rsa { hash: None });

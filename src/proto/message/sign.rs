@@ -13,7 +13,7 @@ use crate::proto::{Error, Result};
 #[derive(Clone, PartialEq, Debug)]
 pub struct SignRequest {
     /// The public key portion of the [`Identity`](super::Identity) in the agent to sign the data with
-    pub pubkey: PublicCredential,
+    pub credential: PublicCredential,
 
     /// Binary data to be signed
     pub data: Vec<u8>,
@@ -32,7 +32,7 @@ impl Decode for SignRequest {
         let flags = u32::decode(reader)?;
 
         Ok(Self {
-            pubkey,
+            credential: pubkey,
             data,
             flags,
         })
@@ -42,7 +42,7 @@ impl Decode for SignRequest {
 impl Encode for SignRequest {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
         [
-            self.pubkey.encoded_len_prefixed()?,
+            self.credential.encoded_len_prefixed()?,
             self.data.encoded_len()?,
             self.flags.encoded_len()?,
         ]
@@ -50,7 +50,7 @@ impl Encode for SignRequest {
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        self.pubkey.encode_prefixed(writer)?;
+        self.credential.encode_prefixed(writer)?;
         self.data.encode(writer)?;
         self.flags.encode(writer)?;
 
