@@ -148,3 +148,71 @@ impl Encode for Request {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ssh_key::Algorithm;
+    use testresult::TestResult;
+
+    use super::*;
+    use crate::proto::{PublicCredential, Response};
+
+    #[test]
+    fn sign_with_cert() -> TestResult {
+        let req =
+            Request::decode(&mut &std::fs::read("tests/messages/req-sign-with-cert.bin")?[..])?;
+        let Request::SignRequest(req) = req else {
+            panic!("expected SignRequest");
+        };
+        let PublicCredential::Cert(cert) = req.pubkey else {
+            panic!("expected certificate");
+        };
+        assert_eq!(cert.algorithm(), Algorithm::Rsa { hash: None });
+        Ok(())
+    }
+
+    #[test]
+    fn sign_with_pubkey() -> TestResult {
+        let req = Request::decode(&mut &std::fs::read("tests/messages/req-sign-request.bin")?[..])?;
+        let Request::SignRequest(req) = req else {
+            panic!("expected SignRequest");
+        };
+        let PublicCredential::Key(cert) = req.pubkey else {
+            panic!("expected key");
+        };
+        assert_eq!(cert.algorithm(), Algorithm::Rsa { hash: None });
+        Ok(())
+    }
+
+    #[test]
+    fn resp_identities_with_cert() -> TestResult {
+        let resp = Response::decode(
+            &mut &std::fs::read("tests/messages/resp-identities-with-cert.bin")?[..],
+        )?;
+        let Response::IdentitiesAnswer(resp) = resp else {
+            panic!("expected IdentitiesAnswer");
+        };
+        assert_eq!(resp.len(), 4);
+        let PublicCredential::Cert(cert) = &resp[3].pubkey else {
+            panic!("expected certificate");
+        };
+        assert_eq!(cert.algorithm(), Algorithm::Rsa { hash: None });
+        Ok(())
+    }
+
+    #[test]
+    fn resp_identities_with_key() -> TestResult {
+        let resp = Response::decode(
+            &mut &std::fs::read("tests/messages/resp-identities-answer.bin")?[..],
+        )?;
+        let Response::IdentitiesAnswer(resp) = resp else {
+            panic!("expected IdentitiesAnswer");
+        };
+        assert_eq!(resp.len(), 1);
+        let PublicCredential::Key(key) = &resp[0].pubkey else {
+            panic!("expected key");
+        };
+        assert_eq!(key.algorithm(), Algorithm::Rsa { hash: None });
+        Ok(())
+    }
+}
