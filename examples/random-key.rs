@@ -88,7 +88,7 @@ impl Session for RandomKey {
     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         let identity = self.private_key.lock().unwrap();
         Ok(vec![Identity {
-            pubkey: PublicCredential::Key(PublicKey::from(identity.deref()).into()),
+            credential: PublicCredential::Key(PublicKey::from(identity.deref()).into()),
             comment: identity.comment().into(),
         }])
     }

@@ -13,7 +13,7 @@ use crate::proto::{Error, Result};
 #[derive(Clone, PartialEq, Debug)]
 pub struct Identity {
     /// A standard public-key encoding of an underlying key.
-    pub pubkey: PublicCredential,
+    pub credential: PublicCredential,
 
     /// A human-readable comment
     pub comment: String,
@@ -36,24 +36,27 @@ impl Decode for Identity {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let pubkey = reader.read_prefixed(PublicCredential::decode)?;
+        let credential = reader.read_prefixed(PublicCredential::decode)?;
         let comment = String::decode(reader)?;
 
-        Ok(Self { pubkey, comment })
+        Ok(Self {
+            credential,
+            comment,
+        })
     }
 }
 
 impl Encode for Identity {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
         [
-            self.pubkey.encoded_len_prefixed()?,
+            self.credential.encoded_len_prefixed()?,
             self.comment.encoded_len()?,
         ]
         .checked_sum()
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        self.pubkey.encode_prefixed(writer)?;
+        self.credential.encode_prefixed(writer)?;
         self.comment.encode(writer)?;
 
         Ok(())

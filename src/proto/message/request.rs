@@ -193,7 +193,7 @@ mod tests {
             panic!("expected IdentitiesAnswer");
         };
         assert_eq!(resp.len(), 4);
-        let PublicCredential::Cert(cert) = &resp[3].pubkey else {
+        let PublicCredential::Cert(cert) = &resp[3].credential else {
             panic!("expected certificate");
         };
         assert_eq!(cert.algorithm(), Algorithm::Rsa { hash: None });
@@ -209,7 +209,7 @@ mod tests {
             panic!("expected IdentitiesAnswer");
         };
         assert_eq!(resp.len(), 1);
-        let PublicCredential::Key(key) = &resp[0].pubkey else {
+        let PublicCredential::Key(key) = &resp[0].credential else {
             panic!("expected key");
         };
         assert_eq!(key.algorithm(), Algorithm::Rsa { hash: None });
