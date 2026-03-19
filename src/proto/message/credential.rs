@@ -140,8 +140,23 @@ impl Decode for PublicCredential {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> core::result::Result<Self, Self::Error> {
-        // TODO: implement parsing certificates
-        Ok(Self::Key(KeyData::decode(reader)?))
+        // FIXME: This needs to be rewritten using Certificate::decode_as when ssh-key 0.7.0 hits stable, see: https://github.com/wiktor-k/ssh-agent-lib/pull/85#issuecomment-3751946208
+        let alg = String::decode(reader)?;
+
+        let remaining_len = reader.remaining_len();
+        let mut buf = Vec::with_capacity(4 + alg.len() + remaining_len);
+        alg.encode(&mut buf)?;
+        let mut tail = vec![0u8; remaining_len];
+        reader.read(&mut tail)?;
+        buf.extend_from_slice(&tail);
+
+        if Algorithm::new_certificate(&alg).is_ok() {
+            let cert = Certificate::decode(&mut &buf[..])?;
+            Ok(Self::Cert(Box::new(cert)))
+        } else {
+            let key = KeyData::decode(&mut &buf[..])?;
+            Ok(Self::Key(key))
+        }
     }
 }
 
