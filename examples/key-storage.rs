@@ -122,7 +122,7 @@ impl Session for KeyStorage {
         let mut identities = vec![];
         for identity in self.identities.lock().unwrap().iter() {
             identities.push(message::Identity {
-                pubkey: identity.pubkey.key_data().clone().into(),
+                credential: identity.pubkey.key_data().clone().into(),
                 comment: identity.comment.clone(),
             })
         }
