@@ -3,6 +3,7 @@ version = 2
 yanked = "deny"
 ignore = [
   "RUSTSEC-2023-0071",  # the vurnerable crate is used in tests only
+  "RUSTSEC-2026-0097",  # the `log` and `thread_rng` features are not enabled
 ]
 
 [bans]
