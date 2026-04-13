@@ -55,3 +55,23 @@ secrecy = "0.10.3"
 
 [target.'cfg(target_os = "windows")'.dev-dependencies]
 interprocess = "2.4.0"
+
+[[example]]
+name = "agent-socket-info"
+required-features = ["agent"]
+
+[[example]]
+name = "key-storage"
+required-features = ["agent"]
+
+[[example]]
+name = "proto-dumper"
+required-features = ["agent"]
+
+[[example]]
+name = "random-key"
+required-features = ["agent"]
+
+[[example]]
+name = "ssh-agent-client"
+required-features = ["agent"]
