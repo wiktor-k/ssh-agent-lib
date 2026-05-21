@@ -41,7 +41,7 @@ impl RandomKey {
 impl Session for RandomKey {
     async fn sign(&mut self, sign_request: SignRequest) -> Result<Signature, AgentError> {
         let private_key = self.private_key.lock().unwrap();
-        let PublicCredential::Key(pubkey) = sign_request.pubkey else {
+        let PublicCredential::Key(pubkey) = sign_request.credential else {
             return Err(std::io::Error::other("Key not found").into());
         };
         if PublicKey::from(private_key.deref()).key_data() != &pubkey {
@@ -88,7 +88,7 @@ impl Session for RandomKey {
     async fn request_identities(&mut self) -> Result<Vec<Identity>, AgentError> {
         let identity = self.private_key.lock().unwrap();
         Ok(vec![Identity {
-            pubkey: PublicCredential::Key(PublicKey::from(identity.deref()).into()),
+            credential: PublicCredential::Key(PublicKey::from(identity.deref()).into()),
             comment: identity.comment().into(),
         }])
     }

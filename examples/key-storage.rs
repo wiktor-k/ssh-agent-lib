@@ -74,7 +74,7 @@ impl KeyStorage {
 #[crate::async_trait]
 impl Session for KeyStorage {
     async fn sign(&mut self, sign_request: SignRequest) -> Result<Signature, AgentError> {
-        let pubkey: PublicKey = sign_request.pubkey.key_data().clone().into();
+        let pubkey: PublicKey = sign_request.credential.key_data().clone().into();
 
         if let Some(identity) = self.identity_from_pubkey(&pubkey) {
             match identity.privkey.key_data() {
@@ -122,7 +122,7 @@ impl Session for KeyStorage {
         let mut identities = vec![];
         for identity in self.identities.lock().unwrap().iter() {
             identities.push(message::Identity {
-                pubkey: identity.pubkey.key_data().clone().into(),
+                credential: identity.pubkey.key_data().clone().into(),
                 comment: identity.comment.clone(),
             })
         }
@@ -175,7 +175,7 @@ impl Session for KeyStorage {
     }
 
     async fn remove_identity(&mut self, identity: RemoveIdentity) -> Result<(), AgentError> {
-        let pubkey: PublicKey = identity.pubkey.into();
+        let pubkey: PublicKey = identity.credential.key_data().clone().into();
         self.identity_remove(&pubkey)?;
         Ok(())
     }
