@@ -182,6 +182,7 @@ impl<S: Read + Write> Client<S> {
         match self.handle(Request::Extension(extension))? {
             Response::Success => Ok(None),
             Response::ExtensionResponse(response) => Ok(Some(response)),
+            Response::Failure => Err(AgentError::Failure),
             _ => Err(ProtoError::UnexpectedResponse.into()),
         }
     }
