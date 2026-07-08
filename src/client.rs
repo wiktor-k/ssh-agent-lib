@@ -187,6 +187,7 @@ where
             Response::Success => Ok(None),
             Response::ExtensionResponse(response) => Ok(Some(response)),
             Response::Failure => Err(AgentError::Failure),
+            Response::ExtensionFailure => Err(AgentError::ExtensionFailure),
             _ => Err(ProtoError::UnexpectedResponse.into()),
         }
     }
