@@ -27,16 +27,21 @@ tokio = { version = "1", optional = true, features = ["rt", "net", "time"] }
 tokio-util = { version = "0.7", optional = true, features = ["codec"] }
 service-binding = { version = "^3", optional = true }
 ssh-encoding = { version = "0.2" }
-ssh-key = { version = "0.6", features = ["crypto", "alloc"] }
+ssh-key = { version = "0.6", default-features = false, features = ["std"] }
 thiserror = "2"
 subtle = { version = "2", default-features = false }
 signature = { version = "2", features = ["alloc"] }
 secrecy = "0.10"
 
 [features]
-default = ["agent"]
-codec = ["tokio-util"]
-agent = ["futures", "log", "tokio", "async-trait", "codec", "service-binding"]
+default = ["agent", "crypto-all"]
+codec = ["dep:tokio-util"]
+crypto-all = ["ssh-key/crypto", "crypto-dsa", "crypto-ecdsa", "crypto-ed25519", "crypto-rsa"]
+crypto-dsa = ["ssh-key/dsa"]
+crypto-ecdsa = ["ssh-key/p256", "ssh-key/p384", "ssh-key/p521"]
+crypto-ed25519 = ["ssh-key/ed25519"]
+crypto-rsa = ["ssh-key/rsa"]
+agent = ["dep:futures", "dep:log", "dep:tokio", "dep:async-trait", "codec", "dep:service-binding"]
 
 [dev-dependencies]
 env_logger = "0.11.10"
