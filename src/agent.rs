@@ -288,6 +288,7 @@ pub trait Session: 'static + Sync + Send + Unpin {
                     None => Ok(Response::Success),
                 }
             }
+            Request::Unknown(_) => return Ok(Response::Failure),
         }
         Ok(Response::Success)
     }
