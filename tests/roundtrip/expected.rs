@@ -22,7 +22,8 @@ make_expected_fn!(request -> Request, {
     req_add_identity_ecdsa,
     req_add_identity_constrained_lifetime,
     req_add_identity_constrained_extension_restrict_destination,
-    req_parse_certificates
+    req_parse_certificates,
+    req_unknown_message_version_request
 });
 
 make_expected_fn!(response -> Response, {

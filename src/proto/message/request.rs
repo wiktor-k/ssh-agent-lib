@@ -6,7 +6,7 @@ use super::{
     AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained, Extension, RemoveIdentity,
     SignRequest, SmartcardKey,
 };
-use crate::proto::{Error, Result};
+use crate::proto::{Error, Result, Unparsed};
 
 /// SSH agent protocol request messages.
 ///
@@ -59,16 +59,14 @@ pub enum Request {
     Extension(Extension),
 
     /// A request message of an unknown type.
-    ///
-    /// The carried value is the raw protocol message identifier (type byte)
-    /// that could not be parsed. Because the message body format of unknown
-    /// types is undefined, the payload following the type byte is skipped.
-    ///
-    /// Agents should reply with [`Response::Failure`](crate::proto::Response::Failure) (per
-    /// [draft-miller-ssh-agent-14 § 4.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-4.1))
-    /// and keep the connection open, matching the behaviour of OpenSSH's
-    /// `ssh-agent`.
-    Unknown(u8),
+    Unknown {
+        /// The raw protocol message identifier that
+        /// could not be parsed.
+        message_id: u8,
+        /// Any payload within the unknown message, which
+        /// can be decoded if the type is known.
+        payload: Unparsed,
+    },
 }
 
 impl Request {
@@ -89,7 +87,7 @@ impl Request {
             Self::AddIdConstrained(_) => 25,
             Self::AddSmartcardKeyConstrained(_) => 26,
             Self::Extension(_) => 27,
-            Self::Unknown(command) => *command,
+            Self::Unknown { message_id, .. } => *message_id,
         }
     }
 }
@@ -98,9 +96,9 @@ impl Decode for Request {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let message_type = u8::decode(reader)?;
+        let message_id = u8::decode(reader)?;
 
-        match message_type {
+        match message_id {
             11 => Ok(Self::RequestIdentities),
             13 => SignRequest::decode(reader).map(Self::SignRequest),
             17 => AddIdentity::decode(reader).map(Self::AddIdentity),
@@ -113,7 +111,10 @@ impl Decode for Request {
             25 => AddIdentityConstrained::decode(reader).map(Self::AddIdConstrained),
             26 => AddSmartcardKeyConstrained::decode(reader).map(Self::AddSmartcardKeyConstrained),
             27 => Extension::decode(reader).map(Self::Extension),
-            command => Ok(Self::Unknown(command)),
+            _ => Unparsed::decode(reader).map(|payload| Self::Unknown {
+                message_id,
+                payload,
+            }),
         }
     }
 }
@@ -134,7 +135,7 @@ impl Encode for Request {
             Self::AddIdConstrained(key) => key.encoded_len()?,
             Self::AddSmartcardKeyConstrained(key) => key.encoded_len()?,
             Self::Extension(extension) => extension.encoded_len()?,
-            Self::Unknown(_) => 0,
+            Self::Unknown { payload, .. } => payload.encoded_len()?,
         };
 
         [message_id_len, payload_len].checked_sum()
@@ -157,7 +158,7 @@ impl Encode for Request {
             Self::AddIdConstrained(identity) => identity.encode(writer)?,
             Self::AddSmartcardKeyConstrained(key) => key.encode(writer)?,
             Self::Extension(extension) => extension.encode(writer)?,
-            Self::Unknown(_) => {}
+            Self::Unknown { payload, .. } => payload.encode(writer)?,
         };
 
         Ok(())

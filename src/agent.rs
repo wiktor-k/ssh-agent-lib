@@ -32,6 +32,7 @@ use crate::proto::ProtoError;
 use crate::proto::RemoveIdentity;
 use crate::proto::SignRequest;
 use crate::proto::SmartcardKey;
+use crate::proto::Unparsed;
 
 /// Type representing a socket that asynchronously returns a list of streams.
 ///
@@ -258,6 +259,23 @@ pub trait Session: 'static + Sync + Send + Unpin {
         }))
     }
 
+    /// Handle the case where an unknown message is received from the client.
+    ///
+    /// By default - per [RFC9987 § 5.1](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1) -
+    /// if a message is unknown to the agent, a [`Response::Failure`](crate::proto::Response::Failure)
+    /// should be returned.
+    ///
+    /// However, if the message type _is_ known, a custom response can be returned to the client.
+    async fn unknown_message(
+        &mut self,
+        message_id: u8,
+        _payload: Unparsed,
+    ) -> Result<Option<Response>, AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: message_id,
+        }))
+    }
+
     /// Handle a raw SSH agent request and return agent response.
     ///
     /// Note that it is preferable to use high-level functions instead of
@@ -288,7 +306,15 @@ pub trait Session: 'static + Sync + Send + Unpin {
                     None => Ok(Response::Success),
                 }
             }
-            Request::Unknown(_) => return Ok(Response::Failure),
+            Request::Unknown {
+                message_id,
+                payload,
+            } => {
+                return match self.unknown_message(message_id, payload).await? {
+                    Some(response) => Ok(response),
+                    None => Ok(Response::Failure),
+                }
+            }
         }
         Ok(Response::Success)
     }
