@@ -10,7 +10,8 @@
 //! `SSH2_AGENT_REQUEST_VERSION` (type 1) message that most agents do not
 //! implement. Such probes must not kill the connection.
 
-use std::os::unix::net::UnixStream as StdUnixStream;
+use std::io::{Read, Write};
+use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
 use ssh_agent_lib::agent::{listen, Session};
@@ -28,21 +29,21 @@ impl Session for DummyAgent {
     }
 }
 
-fn spawn_agent(socket_path: &std::path::Path) -> std::thread::JoinHandle<()> {
-    let socket_path = socket_path.to_path_buf();
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async move {
-            let listener = tokio::net::UnixListener::bind(&socket_path).unwrap();
-            listen(listener, DummyAgent).await.unwrap();
-        });
-    })
+fn spawn_agent(addr: &str) -> (std::net::SocketAddr, std::thread::JoinHandle<()>) {
+    let addr = addr.to_string();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let listener = rt.block_on(async { tokio::net::TcpListener::bind(&addr).await.unwrap() });
+    let sock_addr = listener.local_addr().unwrap();
+    let handle = std::thread::spawn(move || {
+        rt.block_on(async move { listen(listener, DummyAgent).await.unwrap() });
+    });
+    (sock_addr, handle)
 }
 
-/// Wait until the agent is accepting connections on `socket_path`.
-fn wait_for_socket(socket_path: &std::path::Path) {
+/// Wait until the agent is accepting connections on `addr`.
+fn wait_for_socket(addr: std::net::SocketAddr) {
     for _ in 0..100 {
-        if StdUnixStream::connect(socket_path).is_ok() {
+        if TcpStream::connect(addr).is_ok() {
             return;
         }
         std::thread::sleep(Duration::from_millis(10));
@@ -53,9 +54,7 @@ fn wait_for_socket(socket_path: &std::path::Path) {
 /// Write a raw agent request frame (length prefix + body) and read the raw
 /// response frame, mimicking how low-level clients such as `net-ssh` talk to
 /// the agent. Returns `None` if the connection was closed without a reply.
-fn raw_roundtrip(stream: &mut StdUnixStream, body: &[u8]) -> Option<Vec<u8>> {
-    use std::io::{Read, Write};
-
+fn raw_roundtrip(stream: &mut TcpStream, body: &[u8]) -> Option<Vec<u8>> {
     let mut request = Vec::new();
     (body.len() as u32).encode(&mut request).unwrap();
     request.extend_from_slice(body);
@@ -73,14 +72,10 @@ fn raw_roundtrip(stream: &mut StdUnixStream, body: &[u8]) -> Option<Vec<u8>> {
 
 #[test]
 fn unknown_request_type_replies_failure_and_keeps_connection_open() {
-    let socket_path =
-        std::env::temp_dir().join(format!("ssh-agent-lib-unknown-{}.sock", std::process::id()));
-    let _ = std::fs::remove_file(&socket_path);
+    let (addr, handle) = spawn_agent("127.0.0.1:0");
+    wait_for_socket(addr);
 
-    let handle = spawn_agent(&socket_path);
-    wait_for_socket(&socket_path);
-
-    let mut stream = StdUnixStream::connect(&socket_path).unwrap();
+    let mut stream = TcpStream::connect(addr).unwrap();
 
     // `SSH2_AGENT_REQUEST_VERSION` (message type 1) with a "2.0" payload,
     // as sent by `net-ssh` during agent negotiation. Message type 1 is not a
@@ -95,6 +90,20 @@ fn unknown_request_type_replies_failure_and_keeps_connection_open() {
     assert_eq!(decoded, Response::Failure);
     assert_eq!(response[0], 5, "expected SSH_AGENT_FAILURE (5)");
 
+    // At the protocol level, the unknown request must decode into a
+    // `Request::Unknown` which retains the message type byte *and* the body.
+    let decoded = Request::decode(&mut &request_body[..]).unwrap();
+    let Request::Unknown(message_type, body) = &decoded else {
+        panic!("expected Request::Unknown");
+    };
+    assert_eq!(*message_type, 1, "expected SSH2_AGENT_REQUEST_VERSION (1)");
+    assert_eq!(body.as_ref(), &[0, 0, 0, 3, b'2', b'.', b'0']);
+
+    // The request must encode back to the original wire bytes.
+    let mut reencoded = Vec::new();
+    decoded.encode(&mut reencoded).unwrap();
+    assert_eq!(reencoded, request_body);
+
     // The connection must stay usable: issue a supported request afterwards.
     let mut request = Vec::new();
     Request::RequestIdentities.encode(&mut request).unwrap();
@@ -104,9 +113,7 @@ fn unknown_request_type_replies_failure_and_keeps_connection_open() {
     let decoded = Response::decode(&mut rest).unwrap();
     assert!(matches!(decoded, Response::IdentitiesAnswer(_)));
 
-    drop(stream);
+    stream.shutdown(Shutdown::Both).unwrap();
     // The agent keeps accepting connections, so detach instead of joining.
     drop(handle);
-
-    let _ = std::fs::remove_file(&socket_path);
 }

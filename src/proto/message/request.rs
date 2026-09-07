@@ -4,7 +4,7 @@ use ssh_encoding::{CheckedSum, Decode, Encode, Reader, Writer};
 
 use super::{
     AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained, Extension, RemoveIdentity,
-    SignRequest, SmartcardKey,
+    SignRequest, SmartcardKey, Unparsed,
 };
 use crate::proto::{Error, Result};
 
@@ -60,15 +60,17 @@ pub enum Request {
 
     /// A request message of an unknown type.
     ///
-    /// The carried value is the raw protocol message identifier (type byte)
-    /// that could not be parsed. Because the message body format of unknown
-    /// types is undefined, the payload following the type byte is skipped.
+    /// The first value is the raw protocol message identifier (type byte)
+    /// that could not be parsed; the second is the (unparsed) body of the
+    /// message, which is retained so that [`Session`](crate::agent::Session)
+    /// implementations can inspect or handle it.
     ///
-    /// Agents should reply with [`Response::Failure`](crate::proto::Response::Failure) (per
+    /// By default agents reply with [`Response::Failure`](crate::proto::Response::Failure) (per
     /// [draft-miller-ssh-agent-14 § 4.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-4.1))
     /// and keep the connection open, matching the behaviour of OpenSSH's
-    /// `ssh-agent`.
-    Unknown(u8),
+    /// `ssh-agent`; see
+    /// [`Session::unknown_message`](crate::agent::Session::unknown_message).
+    Unknown(u8, Unparsed),
 }
 
 impl Request {
@@ -89,7 +91,7 @@ impl Request {
             Self::AddIdConstrained(_) => 25,
             Self::AddSmartcardKeyConstrained(_) => 26,
             Self::Extension(_) => 27,
-            Self::Unknown(command) => *command,
+            Self::Unknown(command, _) => *command,
         }
     }
 }
@@ -113,7 +115,14 @@ impl Decode for Request {
             25 => AddIdentityConstrained::decode(reader).map(Self::AddIdConstrained),
             26 => AddSmartcardKeyConstrained::decode(reader).map(Self::AddSmartcardKeyConstrained),
             27 => Extension::decode(reader).map(Self::Extension),
-            command => Ok(Self::Unknown(command)),
+            command => {
+                // The message body format of unknown types is undefined, so
+                // retain the remaining bytes unparsed for the `Session` to
+                // inspect or handle.
+                let mut body = vec![0u8; reader.remaining_len()];
+                reader.read(&mut body)?;
+                Ok(Self::Unknown(command, Unparsed::from(body)))
+            }
         }
     }
 }
@@ -134,7 +143,7 @@ impl Encode for Request {
             Self::AddIdConstrained(key) => key.encoded_len()?,
             Self::AddSmartcardKeyConstrained(key) => key.encoded_len()?,
             Self::Extension(extension) => extension.encoded_len()?,
-            Self::Unknown(_) => 0,
+            Self::Unknown(_, body) => body.encoded_len()?,
         };
 
         [message_id_len, payload_len].checked_sum()
@@ -157,7 +166,7 @@ impl Encode for Request {
             Self::AddIdConstrained(identity) => identity.encode(writer)?,
             Self::AddSmartcardKeyConstrained(key) => key.encode(writer)?,
             Self::Extension(extension) => extension.encode(writer)?,
-            Self::Unknown(_) => {}
+            Self::Unknown(_, body) => body.encode(writer)?,
         };
 
         Ok(())
