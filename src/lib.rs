@@ -1,4 +1,8 @@
-#![doc = include_str!("../README.md")]
+#![cfg_attr(feature = "default", doc = include_str!("../README.md"))]
+#![cfg_attr(
+    not(feature = "default"),
+    doc = "Documentation available using the default feature"
+)]
 #![deny(missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![deny(missing_docs)]
