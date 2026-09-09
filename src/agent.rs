@@ -258,6 +258,21 @@ pub trait Session: 'static + Sync + Send + Unpin {
         }))
     }
 
+    /// Handle a message of an unknown (unsupported) type.
+    ///
+    /// The `message` argument will always be a [`Request::Unknown`] variant,
+    /// carrying both the raw protocol message identifier (type byte) and the
+    /// unparsed body of the message, so that custom handling of messages
+    /// outside of the SSH agent protocol specification is possible.
+    ///
+    /// By default this replies with [`Response::Failure`], as required by
+    /// [draft-miller-ssh-agent-14 § 4.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-4.1):
+    ///
+    /// > SSH_AGENT_FAILURE messages are also sent in reply to requests with unknown types.
+    async fn unknown_message(&mut self, _message: Request) -> Result<Response, AgentError> {
+        Ok(Response::Failure)
+    }
+
     /// Handle a raw SSH agent request and return agent response.
     ///
     /// Note that it is preferable to use high-level functions instead of
@@ -288,6 +303,7 @@ pub trait Session: 'static + Sync + Send + Unpin {
                     None => Ok(Response::Success),
                 }
             }
+            Request::Unknown(_, _) => return self.unknown_message(message).await,
         }
         Ok(Response::Success)
     }
