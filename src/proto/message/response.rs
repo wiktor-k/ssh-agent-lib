@@ -11,6 +11,7 @@ use crate::proto::{Error, Result};
 ///
 /// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
 #[derive(Clone, PartialEq, Debug)]
+#[non_exhaustive]
 pub enum Response {
     /// Indicates generic agent failure
     Failure,
