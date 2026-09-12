@@ -94,13 +94,13 @@ fn unknown_request_type_replies_failure_and_keeps_connection_open() {
     // `Request::Unknown` which retains the message type byte *and* the body.
     let decoded = Request::decode(&mut &request_body[..]).unwrap();
     let Request::Unknown {
-        message_id,
+        message_type,
         payload,
     } = &decoded
     else {
         panic!("expected Request::Unknown");
     };
-    assert_eq!(*message_id, 1, "expected SSH2_AGENT_REQUEST_VERSION (1)");
+    assert_eq!(*message_type, 1, "expected SSH2_AGENT_REQUEST_VERSION (1)");
     assert_eq!(payload.as_ref(), &[0, 0, 0, 3, b'2', b'.', b'0']);
 
     // The request must encode back to the original wire bytes.

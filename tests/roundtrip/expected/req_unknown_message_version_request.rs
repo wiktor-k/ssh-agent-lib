@@ -15,7 +15,7 @@ use ssh_agent_lib::proto::{Request, Unparsed};
 /// [1] https://net-ssh.github.io/net-ssh/classes/Net/SSH/Authentication/Agent.html
 pub fn expected() -> Request {
     Request::Unknown {
-        message_id: 1,
+        message_type: 1,
         payload: Unparsed::from(hex!("00000003 322E30").to_vec())
     }
 }

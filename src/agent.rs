@@ -261,7 +261,7 @@ pub trait Session: 'static + Sync + Send + Unpin {
 
     /// Handle the case where an unknown message is received from the client, where:
     ///
-    /// * The `message_id` argument corresponds to the raw protocol message
+    /// * The `message_type` argument corresponds to the raw protocol message
     ///   identifier (type `byte``) of the message,
     /// * The `payload` argument contains the [`Unparsed`] body of the message,
     ///
@@ -276,11 +276,11 @@ pub trait Session: 'static + Sync + Send + Unpin {
     /// [RFC9987 § 5.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1
     async fn unknown_message(
         &mut self,
-        message_id: u8,
+        message_type: u8,
         _payload: Unparsed,
     ) -> Result<Option<Response>, AgentError> {
         Err(AgentError::from(ProtoError::UnsupportedCommand {
-            command: message_id,
+            command: message_type,
         }))
     }
 
@@ -315,10 +315,10 @@ pub trait Session: 'static + Sync + Send + Unpin {
                 }
             }
             Request::Unknown {
-                message_id,
+                message_type,
                 payload,
             } => {
-                return if let Some(response) = self.unknown_message(message_id, payload).await? {
+                return if let Some(response) = self.unknown_message(message_type, payload).await? {
                     Ok(response)
                 } else {
                     // Per [RFC9987 § 5.1], if a message is unknown to the agent, we

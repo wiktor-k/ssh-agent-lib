@@ -78,9 +78,9 @@ pub enum Request {
     /// [RFC9987 § 5.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1
     /// [RFC9987 § 8.8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1.1
     Unknown {
-        /// The raw protocol message identifier that
+        /// The raw protocol message type that
         /// could not be parsed.
-        message_id: u8,
+        message_type: u8,
         /// Any payload within the unknown message, which
         /// can be decoded if the type is known.
         payload: Unparsed,
@@ -88,10 +88,12 @@ pub enum Request {
 }
 
 impl Request {
-    /// The protocol message identifier for a given [`Request`] message type.
+    /// The protocol message type for a given [`Request`] message variant.
     ///
-    /// Described in [draft-miller-ssh-agent-14 § 6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-6.1).
-    pub fn message_id(&self) -> u8 {
+    /// Described in [RFC9987 § 8.1]
+    ///
+    /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
+    pub fn message_type(&self) -> u8 {
         match self {
             Self::RequestIdentities => 11,
             Self::SignRequest(_) => 13,
@@ -105,8 +107,18 @@ impl Request {
             Self::AddIdConstrained(_) => 25,
             Self::AddSmartcardKeyConstrained(_) => 26,
             Self::Extension(_) => 27,
-            Self::Unknown { message_id, .. } => *message_id,
+            Self::Unknown { message_type, .. } => *message_type,
         }
+    }
+
+    /// The protocol message type for a given [`Request`] message variant.
+    ///
+    /// Described in [RFC9987 § 8.1]
+    ///
+    /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
+    #[deprecated(since = "0.7.0", note = "please use `Request::message_type` instead")]
+    pub fn message_id(&self) -> u8 {
+        self.message_type()
     }
 }
 
@@ -114,9 +126,9 @@ impl Decode for Request {
     type Error = Error;
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
-        let message_id = u8::decode(reader)?;
+        let message_type = u8::decode(reader)?;
 
-        match message_id {
+        match message_type {
             11 => Ok(Self::RequestIdentities),
             13 => SignRequest::decode(reader).map(Self::SignRequest),
             17 => AddIdentity::decode(reader).map(Self::AddIdentity),
@@ -134,7 +146,7 @@ impl Decode for Request {
             // retain the remaining bytes unparsed for the `Session` to
             // inspect or handle.
             _ => Unparsed::decode(reader).map(|payload| Self::Unknown {
-                message_id,
+                message_type,
                 payload,
             }),
         }
@@ -143,7 +155,7 @@ impl Decode for Request {
 
 impl Encode for Request {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
-        let message_id_len = 1;
+        let message_type_len = 1;
         let payload_len = match self {
             Self::RequestIdentities => 0,
             Self::SignRequest(request) => request.encoded_len()?,
@@ -160,12 +172,12 @@ impl Encode for Request {
             Self::Unknown { payload, .. } => payload.encoded_len()?,
         };
 
-        [message_id_len, payload_len].checked_sum()
+        [message_type_len, payload_len].checked_sum()
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        let message_id: u8 = self.message_id();
-        message_id.encode(writer)?;
+        let message_type: u8 = self.message_type();
+        message_type.encode(writer)?;
 
         match self {
             Self::RequestIdentities => {}
