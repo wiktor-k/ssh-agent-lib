@@ -96,12 +96,8 @@ impl Decode for Extension {
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let name = String::decode(reader)?;
-        let mut details = vec![0; reader.remaining_len()];
-        reader.read(&mut details)?;
-        Ok(Self {
-            name,
-            details: details.into(),
-        })
+        let details = Unparsed::decode(reader)?;
+        Ok(Self { name, details })
     }
 }
 

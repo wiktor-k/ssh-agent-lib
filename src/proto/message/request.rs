@@ -14,6 +14,7 @@ use crate::proto::{Error, Result};
 ///
 /// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
 #[derive(Clone, PartialEq, Debug)]
+#[non_exhaustive]
 pub enum Request {
     /// Request a list of all identities (public key/certificate & comment)
     /// from an agent
@@ -58,26 +59,42 @@ pub enum Request {
     /// identified by an *extension type*.
     Extension(Extension),
 
-    /// A request message of an unknown type.
+    /// A request message of an unknown type, capturing the message type,
+    /// and a generic [`Unparsed`] payload blob.
     ///
-    /// The first value is the raw protocol message identifier (type byte)
-    /// that could not be parsed; the second is the (unparsed) body of the
-    /// message, which is retained so that [`Session`](crate::agent::Session)
-    /// implementations can inspect or handle it.
+    /// In other words, this is a fallback for message numbers that the
+    /// "SSH Agent Protocol Message Type Numbers" Registry ([RFC9987 § 9.2]) defines as:
+    /// * `Reserved` (1-4, 7-10, 15-16, and 24 (inclusive)),
+    ///   * Notably (per [RFC9987 § 8.8.1]), this covers pre-RFC "legacy"
+    ///     (i.e. SSHv1 agent protocol) message types.
+    /// * `Private Use` (240-255), or
+    /// * Any ranges not explicitly defined.
     ///
-    /// By default agents reply with [`Response::Failure`](crate::proto::Response::Failure) (per
-    /// [draft-miller-ssh-agent-14 § 4.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-4.1))
-    /// and keep the connection open, matching the behaviour of OpenSSH's
-    /// `ssh-agent`; see
-    /// [`Session::unknown_message`](crate::agent::Session::unknown_message).
-    Unknown(u8, Unparsed),
+    /// Per [RFC9987 § 5.1] - if a message is unknown to the agent, a
+    /// [`Response::Failure`](crate::proto::Response::Failure) must be returned;
+    /// See the [`Session::unknown_message`](crate::agent::Session::unknown_message)
+    /// handler for more information.
+    ///
+    /// [RFC9987 § 9.2]: https://www.rfc-editor.org/rfc/rfc9987.html#section-9.2
+    /// [RFC9987 § 5.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1
+    /// [RFC9987 § 8.8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1.1
+    Unknown {
+        /// The raw protocol message type that
+        /// could not be parsed.
+        message_type: u8,
+        /// Any payload within the unknown message, which
+        /// can be decoded if the type is known.
+        payload: Unparsed,
+    },
 }
 
 impl Request {
-    /// The protocol message identifier for a given [`Request`] message type.
+    /// The protocol message type for a given [`Request`] message variant.
     ///
-    /// Described in [draft-miller-ssh-agent-14 § 6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-6.1).
-    pub fn message_id(&self) -> u8 {
+    /// Described in [RFC9987 § 8.1].
+    ///
+    /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
+    pub fn message_type(&self) -> u8 {
         match self {
             Self::RequestIdentities => 11,
             Self::SignRequest(_) => 13,
@@ -91,8 +108,18 @@ impl Request {
             Self::AddIdConstrained(_) => 25,
             Self::AddSmartcardKeyConstrained(_) => 26,
             Self::Extension(_) => 27,
-            Self::Unknown(command, _) => *command,
+            Self::Unknown { message_type, .. } => *message_type,
         }
+    }
+
+    /// The protocol message type for a given [`Request`] message variant.
+    ///
+    /// Described in [RFC9987 § 8.1].
+    ///
+    /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
+    #[deprecated(since = "0.7.0", note = "please use `Request::message_type` instead")]
+    pub fn message_id(&self) -> u8 {
+        self.message_type()
     }
 }
 
@@ -115,21 +142,21 @@ impl Decode for Request {
             25 => AddIdentityConstrained::decode(reader).map(Self::AddIdConstrained),
             26 => AddSmartcardKeyConstrained::decode(reader).map(Self::AddSmartcardKeyConstrained),
             27 => Extension::decode(reader).map(Self::Extension),
-            command => {
-                // The message body format of unknown types is undefined, so
-                // retain the remaining bytes unparsed for the `Session` to
-                // inspect or handle.
-                let mut body = vec![0u8; reader.remaining_len()];
-                reader.read(&mut body)?;
-                Ok(Self::Unknown(command, Unparsed::from(body)))
-            }
+
+            // The message body format of unknown types is undefined, so
+            // retain the remaining bytes unparsed for the `Session` to
+            // inspect or handle.
+            _ => Unparsed::decode(reader).map(|payload| Self::Unknown {
+                message_type,
+                payload,
+            }),
         }
     }
 }
 
 impl Encode for Request {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
-        let message_id_len = 1;
+        let message_type_len = 1;
         let payload_len = match self {
             Self::RequestIdentities => 0,
             Self::SignRequest(request) => request.encoded_len()?,
@@ -143,15 +170,15 @@ impl Encode for Request {
             Self::AddIdConstrained(key) => key.encoded_len()?,
             Self::AddSmartcardKeyConstrained(key) => key.encoded_len()?,
             Self::Extension(extension) => extension.encoded_len()?,
-            Self::Unknown(_, body) => body.encoded_len()?,
+            Self::Unknown { payload, .. } => payload.encoded_len()?,
         };
 
-        [message_id_len, payload_len].checked_sum()
+        [message_type_len, payload_len].checked_sum()
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        let message_id: u8 = self.message_id();
-        message_id.encode(writer)?;
+        let message_type: u8 = self.message_type();
+        message_type.encode(writer)?;
 
         match self {
             Self::RequestIdentities => {}
@@ -166,7 +193,7 @@ impl Encode for Request {
             Self::AddIdConstrained(identity) => identity.encode(writer)?,
             Self::AddSmartcardKeyConstrained(key) => key.encode(writer)?,
             Self::Extension(extension) => extension.encode(writer)?,
-            Self::Unknown(_, body) => body.encode(writer)?,
+            Self::Unknown { payload, .. } => payload.encode(writer)?,
         };
 
         Ok(())

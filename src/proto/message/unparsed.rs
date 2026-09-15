@@ -1,8 +1,16 @@
-//! Generic container for [`Extension`](super::Extension)-specific content
+//! Generic container for unknown content within a message.
 
-use ssh_encoding::{self, Decode, Encode, Writer};
+use ssh_encoding::{self, Decode, Encode, Reader, Writer};
 
-/// Generic container for [`Extension`](super::Extension)-specific content.
+use crate::proto::{Error, Result};
+
+/// Generic container for message specific content, which cannot be
+/// decoded into a known type.
+///
+/// This may include:
+/// * [`Extension`](super::Extension)-specific content,
+/// * Message content in the [`Request::Unknown`](super::request::Request) variant
+///
 /// Accessing the inner `Vec<u8>` is only possible via conversion methods.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Unparsed(Vec<u8>);
@@ -42,10 +50,22 @@ impl Encode for Unparsed {
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
         // NOTE: Unparsed fields do not embed a length u32,
-        // as the inner Vec<u8> encoding is implementation-defined
-        // (usually an Extension)
+        // as the inner Vec<u8> encoding is implementation-defined.
         writer.write(&self.0[..])?;
 
         Ok(())
+    }
+}
+
+impl Decode for Unparsed {
+    type Error = Error;
+
+    fn decode(reader: &mut impl Reader) -> Result<Self> {
+        // NOTE: Unparsed fields do not embed a length u32,
+        // as the inner Vec<u8> encoding is implementation-defined.
+        let mut result = vec![0u8; reader.remaining_len()];
+        reader.read(&mut result)?;
+
+        Ok(Self(result))
     }
 }

@@ -32,6 +32,7 @@ use crate::proto::ProtoError;
 use crate::proto::RemoveIdentity;
 use crate::proto::SignRequest;
 use crate::proto::SmartcardKey;
+use crate::proto::Unparsed;
 
 /// Type representing a socket that asynchronously returns a list of streams.
 ///
@@ -258,19 +259,29 @@ pub trait Session: 'static + Sync + Send + Unpin {
         }))
     }
 
-    /// Handle a message of an unknown (unsupported) type.
+    /// Handle the case where an unknown message is received from the client, where:
     ///
-    /// The `message` argument will always be a [`Request::Unknown`] variant,
-    /// carrying both the raw protocol message identifier (type byte) and the
-    /// unparsed body of the message, so that custom handling of messages
-    /// outside of the SSH agent protocol specification is possible.
+    /// * The `message_type` argument corresponds to the raw protocol message
+    ///   identifier (type `byte`) of the message,
+    /// * The `payload` argument contains the [`Unparsed`] body of the message,
     ///
-    /// By default this replies with [`Response::Failure`], as required by
-    /// [draft-miller-ssh-agent-14 § 4.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-4.1):
+    /// By default, if unimplemented, any unknown message received by the agent
+    /// will return [`Response::Failure`](crate::proto::Response::Failure) to the caller,
+    /// as per [RFC9987 § 5.1].
     ///
-    /// > SSH_AGENT_FAILURE messages are also sent in reply to requests with unknown types.
-    async fn unknown_message(&mut self, _message: Request) -> Result<Response, AgentError> {
-        Ok(Response::Failure)
+    /// However, if the message type _is_ known, implementers may define
+    /// custom handling of messages outside of the SSH agent protocol specification,
+    /// and return `Ok(None)` for unknown messages.
+    ///
+    /// [RFC9987 § 5.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1
+    async fn unknown_message(
+        &mut self,
+        message_type: u8,
+        _payload: Unparsed,
+    ) -> Result<Option<Response>, AgentError> {
+        Err(AgentError::from(ProtoError::UnsupportedCommand {
+            command: message_type,
+        }))
     }
 
     /// Handle a raw SSH agent request and return agent response.
@@ -303,8 +314,20 @@ pub trait Session: 'static + Sync + Send + Unpin {
                     None => Ok(Response::Success),
                 }
             }
-            Request::Unknown(_, _) => return self.unknown_message(message).await,
+            Request::Unknown {
+                message_type,
+                payload,
+            } => {
+                return if let Some(response) = self.unknown_message(message_type, payload).await? {
+                    Ok(response)
+                } else {
+                    // Per [RFC9987 § 5.1], if a message is unknown to the agent, we
+                    // return SSH_AGENT_FAILURE
+                    Ok(Response::Failure)
+                };
+            }
         }
+
         Ok(Response::Success)
     }
 }

@@ -11,6 +11,7 @@ use crate::proto::{Error, Result};
 ///
 /// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
 #[derive(Clone, PartialEq, Debug)]
+#[non_exhaustive]
 pub enum Response {
     /// Indicates generic agent failure
     Failure,
@@ -35,10 +36,12 @@ pub enum Response {
 }
 
 impl Response {
-    /// The protocol message identifier for a given [`Response`] message type.
+    /// The protocol message type for a given [`Response`] message variant.
     ///
-    /// Described in [draft-miller-ssh-agent-14 § 6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-6.1).
-    pub fn message_id(&self) -> u8 {
+    /// Described in [RFC9987 § 8.1].
+    ///
+    /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
+    pub fn message_type(&self) -> u8 {
         match self {
             Self::Failure => 5,
             Self::Success => 6,
@@ -47,6 +50,16 @@ impl Response {
             Self::ExtensionFailure => 28,
             Self::ExtensionResponse(_) => 29,
         }
+    }
+
+    /// The protocol message type for a given [`Response`] message variant.
+    ///
+    /// Described in [RFC9987 § 8.1].
+    ///
+    /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
+    #[deprecated(since = "0.7.0", note = "please use `Response::message_type` instead")]
+    pub fn message_id(&self) -> u8 {
+        self.message_type()
     }
 }
 
@@ -73,7 +86,7 @@ impl Decode for Response {
 
 impl Encode for Response {
     fn encoded_len(&self) -> ssh_encoding::Result<usize> {
-        let message_id_len = 1;
+        let message_type_len = 1;
         let payload_len = match self {
             Self::Failure => 0,
             Self::Success => 0,
@@ -93,12 +106,12 @@ impl Encode for Response {
             Self::ExtensionResponse(extension) => extension.encoded_len()?,
         };
 
-        [message_id_len, payload_len].checked_sum()
+        [message_type_len, payload_len].checked_sum()
     }
 
     fn encode(&self, writer: &mut impl Writer) -> ssh_encoding::Result<()> {
-        let message_id: u8 = self.message_id();
-        message_id.encode(writer)?;
+        let message_type: u8 = self.message_type();
+        message_type.encode(writer)?;
 
         match self {
             Self::Failure => {}
