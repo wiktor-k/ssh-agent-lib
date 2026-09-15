@@ -38,7 +38,7 @@ pub enum Response {
 impl Response {
     /// The protocol message type for a given [`Response`] message variant.
     ///
-    /// Described in [RFC9987 § 8.1]
+    /// Described in [RFC9987 § 8.1].
     ///
     /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
     pub fn message_type(&self) -> u8 {
@@ -54,7 +54,7 @@ impl Response {
 
     /// The protocol message type for a given [`Response`] message variant.
     ///
-    /// Described in [RFC9987 § 8.1]
+    /// Described in [RFC9987 § 8.1].
     ///
     /// [RFC9987 § 8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1
     #[deprecated(since = "0.7.0", note = "please use `Response::message_type` instead")]

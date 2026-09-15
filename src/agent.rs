@@ -262,7 +262,7 @@ pub trait Session: 'static + Sync + Send + Unpin {
     /// Handle the case where an unknown message is received from the client, where:
     ///
     /// * The `message_type` argument corresponds to the raw protocol message
-    ///   identifier (type `byte``) of the message,
+    ///   identifier (type `byte`) of the message,
     /// * The `payload` argument contains the [`Unparsed`] body of the message,
     ///
     /// By default, if unimplemented, any unknown message received by the agent
