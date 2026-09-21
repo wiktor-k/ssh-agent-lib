@@ -130,6 +130,7 @@ impl MessageExtension for SessionBind {
 }
 
 #[cfg(test)]
+#[cfg(feature = "crypto-ed25519")]
 mod tests {
     use testresult::TestResult;
 
