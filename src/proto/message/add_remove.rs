@@ -15,7 +15,7 @@ use crate::proto::{Error, Result};
 ///
 /// This structure is sent in a [`Request::AddIdentity`](super::Request::AddIdentity) (`SSH_AGENTC_ADD_IDENTITY`) message.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.2](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2)
+/// Described in [RFC9987 § 5.2](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.2)
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentity {
     /// A credential (private & public key, or private key / certificate) to add to the agent
@@ -46,7 +46,7 @@ impl Encode for AddIdentity {
 ///
 /// This structure is sent in a [`Request::AddSmartcardKey`](super::Request::AddSmartcardKey) (`SSH_AGENTC_ADD_SMARTCARD_KEY`) message.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.2](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2)
+/// Described in [RFC9987 § 5.2](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.2)
 #[derive(Clone, Debug)]
 pub struct SmartcardKey {
     /// An opaque identifier for the hardware token
@@ -97,7 +97,7 @@ impl PartialEq for SmartcardKey {
 ///
 /// This structure is sent in a [`Request::RemoveIdentity`](super::Request::RemoveIdentity) (`SSH_AGENTC_REMOVE_IDENTITY`) message.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.4](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.4)
+/// Described in [RFC9987 § 5.4](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.4)
 #[derive(Clone, PartialEq, Debug)]
 pub struct RemoveIdentity {
     /// The public key portion of the [`Identity`](super::Identity) to be removed

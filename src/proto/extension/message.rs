@@ -1,7 +1,7 @@
 //! SSH agent protocol extension messages
 //!
 //! Includes extension message definitions from both:
-//! - [draft-miller-ssh-agent-14](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html)
+//! - [RFC9987](https://www.rfc-editor.org/rfc/rfc9987.html)
 //! - [OpenSSH `PROTOCOL.agent`](https://github.com/openssh/openssh-portable/blob/cbbdf868bce431a59e2fa36ca244d5739429408d/PROTOCOL.agent)
 
 use signature::Verifier;
@@ -16,7 +16,7 @@ use crate::proto::ProtoError;
 /// An optional extension request "query" is defined to allow a
 /// client to query which, if any, extensions are supported by an agent.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.8.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.8.1)
+/// Described in [RFC9987 § 5.8.1](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.8.1)
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueryResponse {
     /// List of supported message extension names

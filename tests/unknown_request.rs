@@ -2,9 +2,10 @@
 //! unknown type and keep the connection open, instead of dropping it.
 //!
 //! This mirrors the behaviour of OpenSSH's `ssh-agent` and is required by
-//! [draft-miller-ssh-agent-14 § 4.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-4.1):
+//! [RFC9987 § 5.1](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1):
 //!
-//! > SSH_AGENT_FAILURE messages are also sent in reply to requests with unknown types.
+//! > SSH_AGENT_FAILURE messages MUST also be sent in reply to requests with
+//! > unknown or unsupported types.
 //!
 //! Some clients (for example Ruby's `net-ssh`) probe the agent with a legacy
 //! `SSH2_AGENT_REQUEST_VERSION` (type 1) message that most agents do not

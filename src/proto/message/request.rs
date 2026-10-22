@@ -12,7 +12,7 @@ use crate::proto::{Error, Result};
 ///
 /// These message types are sent from a client *to* an agent.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
+/// Described in [RFC9987 § 5](https://www.rfc-editor.org/rfc/rfc9987.html#section-5).
 #[derive(Clone, PartialEq, Debug)]
 #[non_exhaustive]
 pub enum Request {
@@ -65,7 +65,7 @@ pub enum Request {
     /// In other words, this is a fallback for message numbers that the
     /// "SSH Agent Protocol Message Type Numbers" Registry ([RFC9987 § 9.2]) defines as:
     /// * `Reserved` (1-4, 7-10, 15-16, and 24 (inclusive)),
-    ///   * Notably (per [RFC9987 § 8.8.1]), this covers pre-RFC "legacy"
+    ///   * Notably (per [RFC9987 § 8.1.1]), this covers pre-RFC "legacy"
     ///     (i.e. SSHv1 agent protocol) message types.
     /// * `Private Use` (240-255), or
     /// * Any ranges not explicitly defined.
@@ -77,7 +77,7 @@ pub enum Request {
     ///
     /// [RFC9987 § 9.2]: https://www.rfc-editor.org/rfc/rfc9987.html#section-9.2
     /// [RFC9987 § 5.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-5.1
-    /// [RFC9987 § 8.8.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1.1
+    /// [RFC9987 § 8.1.1]: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.1.1
     Unknown {
         /// The raw protocol message type that
         /// could not be parsed.

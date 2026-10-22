@@ -5,7 +5,7 @@
 
 A collection of types for writing custom SSH agents and connecting to existing ones.
 
-The types in this crate closely follow the [SSH Agent Protocol Internet Draft](https://datatracker.ietf.org/doc/html/draft-miller-ssh-agent) specification and can be used to utilize remote keys not supported by the default OpenSSH agent.
+The types in this crate closely follow the [SSH Agent Protocol (RFC 9987)](https://www.rfc-editor.org/rfc/rfc9987.html) specification and can be used to utilize remote keys not supported by the default OpenSSH agent.
 
 ## Examples
 

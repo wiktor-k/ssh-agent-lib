@@ -9,7 +9,7 @@ use crate::proto::{Error, Result};
 ///
 /// A list of these structures are sent in a [`Response::IdentitiesAnswer`](super::Response::IdentitiesAnswer) (`SSH_AGENT_IDENTITIES_ANSWER`) message body.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.5](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.5)
+/// Described in [RFC9987 § 5.5](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.5)
 #[derive(Clone, PartialEq, Debug)]
 pub struct Identity {
     /// A standard public-key encoding of an underlying key.

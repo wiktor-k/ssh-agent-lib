@@ -9,7 +9,7 @@ use crate::proto::{Error, Result};
 ///
 /// These message types are sent to a client *from* an agent (in response to a [`Request`](super::Request) message).
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3).
+/// Described in [RFC9987 § 5](https://www.rfc-editor.org/rfc/rfc9987.html#section-5).
 #[derive(Clone, PartialEq, Debug)]
 #[non_exhaustive]
 pub enum Response {

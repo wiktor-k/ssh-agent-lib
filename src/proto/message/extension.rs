@@ -11,7 +11,7 @@ use crate::proto::{
 ///
 /// This structure is sent as part of a [`Request::Extension`](super::Request::Extension) (`SSH_AGENT_EXTENSION_RESPONSE`) message.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.8](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.8).
+/// Described in [RFC9987 § 5.8](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.8).
 #[derive(Clone, PartialEq, Debug)]
 pub struct Extension {
     /// Indicates the type of the extension message (as a UTF-8 string)

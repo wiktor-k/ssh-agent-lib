@@ -35,7 +35,7 @@ impl Decode for KeyConstraint {
 
     fn decode(reader: &mut impl Reader) -> Result<Self> {
         let constraint_type = u8::decode(reader)?;
-        // see: https://www.ietf.org/archive/id/draft-miller-ssh-agent-12.html#section-5.2
+        // see: https://www.rfc-editor.org/rfc/rfc9987.html#section-8.2
         Ok(match constraint_type {
             1 => KeyConstraint::Lifetime(u32::decode(reader)?),
             2 => KeyConstraint::Confirm,
@@ -92,7 +92,7 @@ impl Encode for KeyConstraint {
 ///
 /// This is a variant of [`Request::AddIdentity`](crate::proto::Request::AddIdentity) with a set of [`KeyConstraint`]s attached.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.2](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2)
+/// Described in [RFC9987 § 5.2](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.2)
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddIdentityConstrained {
     /// The credential to be added to the agent.
@@ -145,7 +145,7 @@ impl Encode for AddIdentityConstrained {
 ///
 /// This is a variant of [`Request::AddSmartcardKey`](crate::proto::Request::AddSmartcardKey) with a set of [`KeyConstraint`]s attached.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.2.6](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.2.6)
+/// Described in [RFC9987 § 5.2.6](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.2.6)
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddSmartcardKeyConstrained {
     /// A key stored on a hardware token.

@@ -9,7 +9,7 @@ use crate::proto::{Error, Result};
 ///
 /// This structure is sent in a [`Request::SignRequest`](super::Request::SignRequest) (`SSH_AGENTC_SIGN_REQUEST`) message.
 ///
-/// Described in [draft-miller-ssh-agent-14 § 3.6](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.6)
+/// Described in [RFC9987 § 5.6](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.6)
 #[derive(Clone, PartialEq, Debug)]
 pub struct SignRequest {
     /// The public key portion of the [`Identity`](super::Identity) in the agent to sign the data with
@@ -19,7 +19,7 @@ pub struct SignRequest {
     pub data: Vec<u8>,
 
     /// Signature flags, as described in
-    /// [draft-miller-ssh-agent-14 § 3.6.1](https://www.ietf.org/archive/id/draft-miller-ssh-agent-14.html#section-3.6.1)
+    /// [RFC9987 § 5.6.1](https://www.rfc-editor.org/rfc/rfc9987.html#section-5.6.1)
     pub flags: u32,
 }
 
